@@ -9,9 +9,9 @@ export const site = {
   name: "Lisa Gammeltoft",
   firstName: "Lisa",
   lastName: "Gammeltoft",
-  role: "Designer who builds",
+  role: "Product designer & design engineer",
   positioning:
-    "UI and UX designer for websites and apps, who also builds what she designs.",
+    "Product designer in Stockholm who designs and builds websites and digital products, from user research to the live site.",
   city: "Stockholm",
   coords: { lat: "59.33° N", lng: "18.07° E" },
   // TODO: replace with your real addresses
@@ -20,53 +20,103 @@ export const site = {
   github: "https://github.com/lisagammeltoft2002-web",
   cv: "/cv.pdf",
   year: 2026,
-  status: "Open to agency and studio roles",
+  status: "Open to roles at UX and creative studios",
 };
 
-/* The one sentence a hiring lead reads first, and the line under it. */
-export const intro = "I design websites and apps, and I build them too.";
-export const introMore =
-  "UI and UX designer in Stockholm. Today I’m the product engineer at Velory, where I rebuilt velory.com end to end and made the studio the whole company now creates its material in.";
+/* The first thing a hiring lead reads: one promise, who I am, where I am now. */
+export const intro =
+  "I design digital products people understand, and I build them.";
+export const introMore = [
+  "I’m a product designer in Stockholm, working across UX, UI and front-end. Trained at Hyper Island, with a background in psychology and behaviour.",
+  "Currently at Velory, where I designed the journeys through the new portal, rebuilt velory.com and created the in-house studio the whole company now makes its marketing in.",
+];
 
-/* What I bring: three short rows, concrete enough to check. */
+/* What I bring: three rows, concrete enough to check. */
 export const bring = [
   {
-    label: "Design",
-    line: "UI and UX for websites and apps. Research, journeys, design systems and interfaces in Figma. Creative when the brief allows it, by the book when the product needs it.",
+    label: "UX & product design",
+    line: "Research, user journeys, interaction and design systems in Figma. Grounded in UX principles and in how people actually behave.",
   },
   {
-    label: "Build",
-    line: "I ship what I design. Webflow, coded components, motion and the 3D on this page. Claude and Claude Code are part of my everyday toolkit.",
+    label: "Front-end",
+    line: "I build what I design, in Next.js, React and Webflow. I work daily with Claude Code and know how to use AI tools well, not just a lot.",
   },
   {
-    label: "Ship",
-    line: "Live sites, real users, measured results. velory.com went from the first research conversation to launch in four months.",
+    label: "Brand & marketing",
+    line: "Graphic design for campaigns, banners, one-pagers and website imagery. I also built the tool Velory now uses to make it all on-brand.",
   },
 ];
 
-/* How I work: four short beats, written across the sky while one bird flies. */
+/* How I work: four beats, written across the sky while one bird flies. */
 export const process = [
-  { label: "Listen" },
-  { label: "Problem first" },
-  { label: "Systems" },
-  { label: "Ship it" },
+  { label: "Journeys" },
+  { label: "People" },
+  { label: "Business" },
+  { label: "Build" },
 ];
 
 export const journey = {
-  opening:
-    "I never fly a project in a straight line, but I always know where it lands.",
+  opening: "I don’t start with a page. I start with a journey.",
   lines: [
-    "I start with the people who already tell the story best: sales, support and the customer.",
-    "I lead with the problem, so people see themselves before they see the product.",
-    "Then I design it as a system, so it still feels like one product long after launch.",
-    "And I build it myself, from the first sketch to the live site.",
+    "How did they get here, what did they come to do, and why? Everything on the page answers one of those.",
+    "I talk to users and design for how people really behave, so it feels calm and clear and never in the way.",
+    "Good design has to earn its place. I always ask how it helps the business, not just how it looks.",
+    "Then I build it, test it with real people and keep improving it after launch.",
   ],
+};
+
+/* The home page's chapters, by the beat (screen of scrolling) where each begins. */
+export const film = {
+  chapters: [
+    { id: "top", label: "Introduction", from: 0 },
+    { id: "work", label: "Selected work", from: 6 },
+    { id: "process", label: "How I work", from: 15 },
+    { id: "bring", label: "What I bring", from: 20 },
+    { id: "about", label: "About", from: 21 },
+    { id: "contact", label: "Contact", from: 26 },
+  ],
+};
+
+/* What each project's drawing shows, in a few words under it. */
+export const workNotes = {
+  "velory-com": ["Problem", "Proof", "One engine", "Platform", "Try it"],
+  story: "The page now tells the story the way sales does.",
+  before: "Before: five fields and a captcha.",
+  after: "After: an email address. That’s it.",
+  portal: "Laptops, licences and phone plans, in one engine.",
+  brief: "One sentence in…",
+  fan: "…on-brand work out.",
+  studio: [
+    { value: 30, label: "pieces in three weeks" },
+    { value: 5, label: "colleagues using it" },
+    { value: 90, label: "hours saved", prefix: "~" },
+  ],
+  tickets: ["2026 · 4 months · 1 field", "2026 · every asset, one engine", "2026 · ~90 h saved in 3 weeks", "2026 · in progress"],
+  cloud: "Costs scattered across systems nobody owns.",
+  bars: "Sorted into what matters most.",
+  line: "Then followed over time, toward the next step worth taking.",
 };
 
 /* The human part, shown at sunset next to the contact details. */
 export const about = {
   hello: "Hi, I’m Lisa.",
-  body: "I’m social, and very focused when I work. Design doesn’t stop when I log off: I make pottery, crochet, sew my own clothes and tuft rugs. I’ve lived in Australia and competed at the cheerleading world championships.",
+  body: [
+    "I’m happiest when I’m learning something new. In a project that means stepping in without waiting to be asked, asking the questions that matter and finding where I can help most. I’m cheerful and social, and just as happy in a team as heads-down on my own.",
+    "Outside work I’m usually making something: pottery, crochet, rug tufting, painting or sewing my own clothes. I’ve lived in Australia, competed at the cheerleading world championships and taken on challenges like 75 Hard.",
+  ],
+  facts: [
+    { label: "Based in", value: "Stockholm" },
+    { label: "Studied", value: "Hyper Island, two years · Psychology and behaviour" },
+    { label: "Now", value: "Product engineer at Velory" },
+    { label: "Toolbox", value: "Figma, Webflow, Next.js, React, Claude Code" },
+  ],
+  /* the sideways walk through what I make, one line per drawing */
+  walk: [
+    "I throw pottery.",
+    "I crochet.",
+    "And I sew my own clothes.",
+    "I’ve lived in Australia, competed at the cheerleading world championships and taken on challenges like 75 Hard.",
+  ],
   makes: [
     { src: "/images/make-pottery.jpg", alt: "Pottery I made" },
     { src: "/images/make-crochet.jpg", alt: "Crochet I made" },
@@ -75,21 +125,27 @@ export const about = {
 };
 
 export const contact = {
-  title: "Let\u2019s make something.",
+  title: "Let’s make something good.",
   note: `${site.status} · Stockholm & remote`,
 };
 
 /* ------------------------------------------------------------------
-   CASE STUDIES — placeholder projects. Each journey needs 5 stops.
+   CASE STUDIES
 ------------------------------------------------------------------- */
 
 export type CaseStudy = {
   slug: string;
   title: string;
+  /** shown in the little browser bar above the preview */
+  url: string;
+  /** a real screenshot (landscape, ~1600 × 1000). Until then a drawn preview is shown. */
+  shot?: string;
   kind: string;
   year: string;
   tilt: number;
   image: { src: string; alt: string };
+  /** one short sentence, shown inside the torn-paper card on the home page */
+  short: string;
   outcome: string;
   meta: { label: string; value: string }[];
   problem: string[];
@@ -103,13 +159,15 @@ export type CaseStudy = {
 };
 
 /* Each case study, shortened to what a hiring lead reads: the problem,
-   what I did, the numbers and what I learned. Images: swap the src for
-   real screenshots (keep them crisp, landscape, about 1600 × 1000). */
+   what I did, the numbers and what I learned. Add a real screenshot with
+   `shot: "/images/work/velory-com.jpg"` and it replaces the drawn preview. */
 export const caseStudies: CaseStudy[] = [
   {
     slug: "velory-com",
+    short: "A new website that sells the way sales does.",
+    url: "velory.com",
     title: "velory.com",
-    kind: "Website · research, design and build",
+    kind: "Website · UX, design and build",
     year: "2026",
     tilt: -5,
     image: {
@@ -117,7 +175,7 @@ export const caseStudies: CaseStudy[] = [
       alt: "The new velory.com home page",
     },
     outcome:
-      "I rebuilt Velory’s website around how sales actually sells: problem first, proof early, a demo that asks for one field. Designed and shipped alone, in four months.",
+      "A new website built around how Velory actually sells: problem first, proof early, and a demo that asks for one field. Research to launch in four months.",
     meta: [
       {
         label: "Role",
@@ -176,7 +234,48 @@ export const caseStudies: CaseStudy[] = [
     ],
   },
   {
+    slug: "velory-portal",
+    short: "Every laptop, licence and phone plan in one place.",
+    url: "app.velory.com",
+    title: "Velory portal",
+    kind: "Product · UX and UI",
+    year: "2026",
+    tilt: 4,
+    image: { src: "/images/gallery-valley.jpg", alt: "The new Velory portal" },
+    outcome:
+      "The UX and UI for Velory’s new portal, where companies run every laptop, licence and phone plan from one place. I designed the journeys while the developers built it.",
+    meta: [
+      { label: "Role", value: "UX, UI and user journeys" },
+      { label: "Team", value: "Me, with Velory’s developers" },
+      { label: "Timeline", value: "Lorem ipsum" },
+      { label: "Tools", value: "Figma, Next.js" },
+    ],
+    problem: [
+      "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum id ligula porta felis euismod semper. Cras mattis consectetur purus sit amet fermentum.",
+    ],
+    role: [],
+    insight: {
+      quote: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+      note: "lorem ipsum",
+    },
+    journey: [],
+    decisions: [
+      {
+        title: "Lorem ipsum",
+        body: "Maecenas faucibus mollis interdum. Nullam quis risus eget urna mollis ornare vel eu leo.",
+      },
+    ],
+    solution: [],
+    results: [
+      { value: "00%", label: "lorem ipsum" },
+      { value: "0×", label: "dolor sit" },
+    ],
+    reflection: ["Lorem ipsum dolor sit amet, consectetur adipiscing elit."],
+  },
+  {
     slug: "velory-studio",
+    short: "On-brand marketing in minutes, for everyone at Velory.",
+    url: "Velory Studio",
     title: "Velory Studio",
     kind: "Internal tool · product design and build",
     year: "2026",
@@ -186,7 +285,7 @@ export const caseStudies: CaseStudy[] = [
       alt: "Velory Studio, chat on the left and the finished piece on the right",
     },
     outcome:
-      "It started as a faster way to make LinkedIn banners. Now anyone at Velory makes on-brand decks, films and website images in minutes, with the brand, legal and security rules built in.",
+      "It started as a faster way to make banners. Now anyone at Velory creates on-brand decks, films and website images in minutes.",
     meta: [
       {
         label: "Role",
@@ -237,6 +336,8 @@ export const caseStudies: CaseStudy[] = [
   },
   {
     slug: "actionable-insights",
+    short: "IT data turned into clear next steps.",
+    url: "app.velory.com/insights",
     title: "Actionable Insights",
     kind: "Product · UX and UI",
     year: "2026",
@@ -246,7 +347,7 @@ export const caseStudies: CaseStudy[] = [
       alt: "Actionable Insights in the Velory portal",
     },
     outcome:
-      "Helping Velory’s customers see where they can save money on IT, without having to think about it.",
+      "Turning a company’s IT data into clear next steps, so saving money becomes the obvious choice.",
     meta: [
       { label: "Role", value: "Lorem ipsum" },
       { label: "Team", value: "Lorem ipsum" },
