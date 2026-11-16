@@ -2,9 +2,14 @@
 
 @theme {
   --font-display: var(--font-plex), "Courier New", monospace;
-  --color-leaf: #dcebc6; /* text: a very light green, softer than white */
+  --color-leaf: #e6ecd8; /* text: light cream white with a breath of green */
+  --color-cream: #e9ecdc; /* the cream paper cells */
+  --color-moss: #1f3315; /* dark green ink on the cream cells */
+  --color-rule: rgb(230 236 214 / 0.42); /* the net's strokes: thin cream lines */
 }
 
 body {
   background: #0d1a0a;
+  color: var(--color-leaf);
 }
+

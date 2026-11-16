@@ -21,6 +21,7 @@ export const site = {
   cv: "/cv.pdf",
   year: 2026,
   status: "Open to roles at UX and creative studios",
+  portrait: { src: "/images/portrait.jpg", alt: "Lisa Gammeltoft by the water in Stockholm" },
 };
 
 /* The first thing a hiring lead reads: one promise, who I am, where I am now. */

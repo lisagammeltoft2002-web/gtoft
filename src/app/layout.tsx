@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Mono } from "next/font/google";
 import { site } from "@/content/site";
+import { DuoFilter } from "@/components/Tinted";
 import "./globals.css";
 
 /* a thin mono with a typewriter feel that stays easy to read */
@@ -14,7 +15,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${plex.variable} antialiased`}>
-      <body>{children}</body>
+      <body>
+        <DuoFilter />
+        {children}
+      </body>
     </html>
   );
 }
