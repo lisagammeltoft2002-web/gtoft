@@ -1,162 +1,233 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { about, intro, site } from "@/content/site";
-import { Tinted } from "./Tinted";
-import { WorkDetail, WorkFilters, WorkList, WorkPrints } from "./Work";
+import { useEffect, useRef } from "react";
+import gsap from "gsap";
+import { caseStudies } from "@/content/site";
+import { WorkFilters } from "./Work";
+import { carvedPath, type Rect } from "./carve";
+import { createFlow, discAt, LAND_FIRST, PEEL_START } from "./flow";
 
-/* The hero as four corners around an open middle (the lilies and the light):
-   - top left: a small outlined card with portrait, name and role. Hovering it grows the
-     card out of its corner and the about cells appear;
-   - bottom right: a small card listing the case studies. Hovering it (or scrolling
-     down) grows it into the work: printed pictures and the highlighted case;
-   - top right: Stockholm; bottom left: the promise, as plain text on the page.
-   Only one card is open at a time; scrolling up opens about, down opens the work.
+/* The hero: cream paper with one big grainy green disc, and the case studies standing around
+   it, carved by its curve. Scrolling plays one journey (see flow.ts), from the top of the page
+   to the bottom:
+   1. held (the hero is pinned): the wind peels the ball from the top while the cards stop making
+      room for it and grow to full height;
+   2. open sky: the cards scroll away and the sand flows on the wind across the empty paper;
+   3. About: the sand descends behind the text and settles into the dunes under it.
+   Sand in the air keeps drifting gently even when the scroll stops.
 
-   How a card grows: its content is laid out at full size from the start, and a thin
-   outline around it animates from the small corner size to the full size. The cells
-   outside the corner fade in once the sheet has room for them. */
+   Two fixed canvases behind all the content: the paper (ball + dunes) and the sand. */
 
-/* one cell of the net */
-const CELL = "p-[1.4vw]";
+/* the radius the disc carves out of the cards: its soft edge plus a little air */
+const carveR = (r: number, H: number) => r + 0.035 * H * 0.6 + 18;
 
-const EASE = "duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]";
-
-/* the corner card sizes: small (closed) and full (open) */
-const ME = { w: "30vw", h: "20vh", W: "70vw", H: "62vh" };
-const WORK = { w: "26vw", h: "22vh", W: "62vw", H: "62vh" };
-
-type Card = "me" | "work" | null;
-
-/* which corner card is open (only one at a time). A card opens while the pointer or
-   keyboard focus is in it, and closes a moment after the pointer leaves. */
-function useCards() {
-  const [open, setOpen] = useState<Card>(null);
-  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const hover = (card: Exclude<Card, null>) => ({
-    onMouseEnter: () => (clearTimeout(timer.current), setOpen(card)),
-    onMouseLeave: () => (timer.current = setTimeout(() => setOpen((o) => (o === card ? null : o)), 180)),
-    onFocus: () => (clearTimeout(timer.current), setOpen(card)),
-    onBlur: () => setOpen((o) => (o === card ? null : o)),
-  });
-  return { open, setOpen, hover };
+/* three cards across the bottom: tall ones at the sides, a shorter one in the middle */
+const M = 16;
+const TOPS = [0.3, 0.52, 0.3];
+function cardRects(W: number, H: number): Rect[] {
+  const g = 14;
+  const xs = [M, 0.36 * W, 0.66 * W, W - M];
+  const last = TOPS.length - 1;
+  return TOPS.map((t, i) => ({ x0: xs[i] + (i ? g / 2 : 0), x1: xs[i + 1] - (i < last ? g / 2 : 0), y0: t * H, y1: H - M }));
 }
 
-/* the outline of a card: no fill, just a thin line, growing from its corner */
-function Sheet({ open, size, corner }: { open: boolean; size: typeof ME; corner: "tl" | "br" }) {
-  return (
-    <span
-      aria-hidden
-      className={`pointer-events-auto absolute border border-rule transition-[width,height] ${EASE} ${corner === "tl" ? "left-0 top-0" : "bottom-0 right-0"}`}
-      style={{ width: open ? size.W : size.w, height: open ? size.H : size.h }}
-    />
-  );
-}
+const RADIUS = 22; /* every corner of every card, including where the curve meets an edge */
+const GRAINS = 120000; /* on a 1440×900 screen; fewer on smaller ones */
+/* once the ball has started to let go the clock keeps it alive: sand in the air drifts, and in the
+   finished desert the wind blows wisps off the crests */
+/* progress at the end of the hold, when the cards have left the screen, and when the landing starts */
+const PHASE = [0.4, 0.58, LAND_FIRST];
 
-/* the cells outside the corner: hidden while closed, fading in as the card grows */
-const reveal = (open: boolean) => `transition-opacity ${open ? "opacity-100 delay-200 duration-500" : "pointer-events-none opacity-0 duration-200"}`;
+/* the case studies on the hero (the Velory portal is left out for now) */
+const work = caseStudies.filter((c) => c.slug !== "velory-portal");
+const kind = (k: string) => k.split(" · ")[0];
+
+const smooth = (a: number, b: number, x: number) => {
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+};
 
 export function Hero() {
-  const { open, setOpen, hover } = useCards();
-  const me = { open: open === "me", on: hover("me") };
-  const work = { open: open === "work", on: hover("work") };
-  const [on, setOn] = useState(0);
+  const back = useRef<HTMLCanvasElement>(null);
+  const front = useRef<HTMLCanvasElement>(null);
+  const cards = useRef<(HTMLAnchorElement | null)[]>([]);
+  const words = useRef<HTMLDivElement>(null);
 
-  /* scrolling: down opens the work (or closes about), up opens about (or closes the
-     work). The page itself never scrolls, so the wheel and swipes are free. */
   useEffect(() => {
-    const go = (down: boolean) => setOpen((o) => (down ? (o === "me" ? null : "work") : o === "work" ? null : "me"));
-    let touchY = 0;
-    let last = 0;
-    const once = (down: boolean) => {
-      if (Date.now() - last < 600) return; // one step per gesture
-      last = Date.now();
-      go(down);
+    const paperCanvas = back.current!;
+    const sandCanvas = front.current!;
+    const flow = createFlow(paperCanvas, sandCanvas, GRAINS);
+    if (!flow) return;
+    const pinned = paperCanvas.closest("section")!;
+
+    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let W = 0;
+    let H = 0;
+    let builtFor = "";
+    let rects: Rect[] = [];
+    let pinLen = 1; /* how long the hero is held, px of scroll */
+    let total = 1; /* the whole journey, px of scroll */
+    const pos = { x: 0, y: 0 }; /* the disc's drift towards the cursor */
+    const st = { P: 0 }; /* the journey's progress, smoothed */
+    let dirty = true;
+
+    const render = (time: number) => {
+      const alive = !still && flow.ready && st.P > PEEL_START;
+      if (!dirty && !alive) return;
+      dirty = false;
+      /* the ground is the bottom of the screen: the waiting sand drifts there, low behind the
+         text, and the dunes form there (only the lowest third of the screen) */
+      flow.render(st.P, still ? 0 : time, pos);
+
+      const d = discAt(W, H);
+      const cx = d.cx + pos.x;
+      const cy = d.cy + pos.y;
+      /* the title lives inside the disc and goes with the first of the peel */
+      if (words.current) {
+        words.current.style.clipPath = `circle(${(d.r - 0.01 * H).toFixed(1)}px at ${cx.toFixed(1)}px ${cy.toFixed(1)}px)`;
+        words.current.style.opacity = String(1 - smooth(PEEL_START, PEEL_START + 0.08, st.P));
+      }
+
+      /* the cards stop making room for the ball and grow to full height, a little behind the peel,
+         so its top and the first streams stay in view above them */
+      const held = Math.min(1, Math.max(0, window.scrollY / pinLen));
+      const e = smooth(0.6, 1, held);
+      const R = carveR(d.r, H);
+      const lift = Math.min(1, e * 1.6) ** 1.5 * (cy + R + 10); /* until the carve has left the screen */
+      rects.forEach((rc, i) => {
+        const el = cards.current[i];
+        if (!el) return;
+        const y0 = rc.y0 + (M - rc.y0) * e;
+        el.style.top = `${y0}px`;
+        el.style.height = `${rc.y1 - y0}px`;
+        const local = { x0: 0, y0: 0, x1: rc.x1 - rc.x0, y1: rc.y1 - y0 };
+        el.style.clipPath = `path("${carvedPath(local, cx - rc.x0, cy - lift - y0, R, RADIUS) || "M0 0Z"}")`;
+      });
     };
-    const wheel = (e: WheelEvent) => Math.abs(e.deltaY) > 4 && once(e.deltaY > 0);
-    const start = (e: TouchEvent) => (touchY = e.touches[0].clientY);
-    const move = (e: TouchEvent) => {
-      const dy = touchY - e.touches[0].clientY;
-      if (Math.abs(dy) > 30) once(dy > 0);
+
+    const resize = () => {
+      W = window.innerWidth;
+      H = window.innerHeight;
+      pinLen = Math.max(1, pinned.offsetHeight - H);
+      total = Math.max(1, document.documentElement.scrollHeight - H);
+      rects = cardRects(W, H);
+      rects.forEach((rc, i) => {
+        const el = cards.current[i];
+        if (el) Object.assign(el.style, { left: `${rc.x0}px`, width: `${rc.x1 - rc.x0}px` });
+      });
+      /* rebuild the flow only when the screen really changes (not when a phone's URL bar moves) */
+      const key = `${W}x${Math.round(H / 40)}`;
+      if (key !== builtFor) {
+        builtFor = key;
+        flow.resize(W, H, Math.min(window.devicePixelRatio || 1, 2));
+      }
+      dirty = true;
     };
-    addEventListener("wheel", wheel, { passive: true });
-    addEventListener("touchstart", start, { passive: true });
-    addEventListener("touchmove", move, { passive: true });
+    resize();
+    flow.onReady = () => (dirty = true);
+    const ro = new ResizeObserver(resize);
+    ro.observe(document.body);
+
+    /* scroll → progress, each phase tied to the layout so it's in view (smoothed a little; it
+       follows the scroll and reverses):
+       - while the hero is held: the peel (the cards only grow at the end of it);
+       - while the cards scroll away over the open sky: the sand flows on the wind;
+       - while About comes up: the sand sinks and drifts low along the ground, behind the text;
+       - over the last screen: the landing, done when About is in place */
+    const tick = () => (dirty = true);
+    const target = () => {
+      const y = window.scrollY;
+      const sky = pinLen + H; /* the cards have left the screen */
+      const land = Math.max(sky, total - 0.9 * H); /* the landing starts */
+      if (y < pinLen) return (PHASE[0] * y) / pinLen;
+      if (y < sky) return PHASE[0] + ((PHASE[1] - PHASE[0]) * (y - pinLen)) / H;
+      if (y < land) return PHASE[1] + ((PHASE[2] - PHASE[1]) * (y - sky)) / (land - sky);
+      return Math.min(1, PHASE[2] + ((1 - PHASE[2]) * (y - land)) / Math.max(1, total - land));
+    };
+    const toP = gsap.quickTo(st, "P", { duration: still ? 0.01 : 0.7, ease: "power2.out", onUpdate: tick });
+    st.P = target();
+
+    const ease = { duration: 1.6, ease: "power3.out", onUpdate: tick };
+    const toX = gsap.quickTo(pos, "x", ease);
+    const toY = gsap.quickTo(pos, "y", ease);
+    const onScroll = () => {
+      dirty = true;
+      toP(target());
+      /* once it lets go the disc holds still */
+      if (window.scrollY > 4) {
+        toX(0);
+        toY(0);
+      }
+    };
+    const move = (e: PointerEvent) => {
+      if (still || window.scrollY > 4) return;
+      toX(((e.clientX / window.innerWidth) * 2 - 1) * 0.03 * window.innerWidth);
+      toY(((e.clientY / window.innerHeight) * 2 - 1) * 0.025 * window.innerHeight);
+    };
+    const leave = () => {
+      toX(0);
+      toY(0);
+    };
+
+    gsap.ticker.add(render);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("pointermove", move, { passive: true });
+    document.documentElement.addEventListener("pointerleave", leave);
     return () => {
-      removeEventListener("wheel", wheel);
-      removeEventListener("touchstart", start);
-      removeEventListener("touchmove", move);
+      ro.disconnect();
+      flow.dispose();
+      gsap.ticker.remove(render);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("pointermove", move);
+      document.documentElement.removeEventListener("pointerleave", leave);
     };
-  }, [setOpen]);
+  }, []);
 
   return (
-    <section className="fixed inset-0 z-10 overflow-hidden font-display font-light text-leaf">
-      {/* top right: the city */}
-      <p className="absolute right-[2.5vw] top-[2.5vh] w-[16vw] border-b border-rule px-[1.4vw] py-[1.4vw] text-right text-[clamp(0.95rem,1.15vw,1.15rem)]">{site.city}</p>
+    /* the hero is held for a screen of scroll while the ball lets go */
+    <section className="relative h-[200dvh] w-full">
+      <div className="sticky top-0 h-dvh w-full overflow-hidden">
+        <WorkFilters />
+        {/* the paper (ball + dunes) and the sand, fixed behind everything */}
+        <canvas ref={back} aria-hidden className="pointer-events-none fixed inset-0 -z-10 h-lvh w-full" />
+        <canvas ref={front} aria-hidden className="pointer-events-none fixed inset-0 -z-[5] h-lvh w-full" />
 
-      {/* bottom left: the promise */}
-      <p className="absolute bottom-[2.5vh] left-[2.5vw] w-[30vw] border-t border-rule p-[1.4vw] text-[clamp(1rem,1.3vw,1.25rem)] leading-relaxed">
-        <span className="block max-w-[34ch]">{intro}</span>
-      </p>
-
-      {/* top left: about me */}
-      <header {...me.on} className="pointer-events-none absolute left-[2.5vw] top-[2.5vh] text-leaf" style={{ width: ME.W, height: ME.H }}>
-        <Sheet open={me.open} size={ME} corner="tl" />
-        <div className="relative grid h-full" style={{ gridTemplateColumns: `${ME.w} 1fr 1fr`, gridTemplateRows: `${ME.h} 1fr` }}>
-          {/* the corner: what shows while closed */}
-          <div className={`${CELL} pointer-events-auto flex flex-col justify-between`}>
-            <div className="flex items-start gap-[1.2vw]">
-              <button aria-expanded={me.open} aria-label="About me" className="shrink-0 cursor-pointer">
-                <Tinted src={site.portrait.src} alt="" className="pointer-events-none aspect-[4/5] h-[clamp(3.6rem,5vw,5rem)]" />
-              </button>
-              <h1 className="text-[clamp(1.7rem,2.6vw,2.6rem)] leading-[1.05] tracking-[-0.02em]">
-                Lisa
-                <br />
-                Gammeltoft
-              </h1>
-            </div>
-            <p className="text-[clamp(0.85rem,1vw,1rem)] italic">{site.role}</p>
-          </div>
-
-          {/* the facts, a little net of two by two */}
-          <dl className={`col-span-2 grid grid-cols-2 grid-rows-2 border-l border-rule text-[clamp(0.72rem,0.8vw,0.84rem)] ${reveal(me.open)}`}>
-            {about.facts.map((f, i) => (
-              <div key={f.label} className={`border-rule px-[1.4vw] py-[1vw] ${i % 2 ? "border-l" : ""} ${i > 1 ? "border-t" : ""}`}>
-                <dt className="italic opacity-70">{f.label}</dt>
-                <dd className="mt-1">{f.value}</dd>
-              </div>
-            ))}
-          </dl>
-
-          <div className={`${CELL} border-t border-rule ${reveal(me.open)}`}>
-            <Tinted src={site.portrait.src} alt={site.portrait.alt} className="h-full w-full" />
-          </div>
-          <div className={`${CELL} border-l border-t border-rule ${reveal(me.open)}`}>
-            <h2 className="text-[clamp(1.2rem,1.6vw,1.6rem)] leading-tight">{about.hello}</h2>
-            <p className="mt-4 text-[clamp(0.76rem,0.84vw,0.88rem)] leading-relaxed">{about.body[0]}</p>
-          </div>
-          <p className={`${CELL} border-l border-t border-rule text-[clamp(0.76rem,0.84vw,0.88rem)] leading-relaxed ${reveal(me.open)}`}>{about.body[1]}</p>
-        </div>
-      </header>
-
-      {/* bottom right: the work */}
-      <nav {...work.on} aria-label="Selected work" className="pointer-events-none absolute bottom-[2.5vh] right-[2.5vw] text-leaf" style={{ width: WORK.W, height: WORK.H }}>
-        <Sheet open={work.open} size={WORK} corner="br" />
-        <div className="relative grid h-full" style={{ gridTemplateColumns: `1fr ${WORK.w}`, gridTemplateRows: `1fr ${WORK.h}` }}>
-          <div className={`row-span-2 ${reveal(work.open)}`}>
-            <WorkPrints on={on} setOn={setOn} />
-          </div>
-          <div className={`border-l border-rule ${reveal(work.open)}`}>
-            <WorkDetail on={on} />
-          </div>
-          {/* the corner: what shows while closed */}
-          <div className={`pointer-events-auto border-rule transition-[border-color] ${work.open ? "border-l border-t" : "border-l border-t border-transparent"}`}>
-            <WorkList on={on} setOn={setOn} />
+        {/* the title, too big for the disc: cut by its curve on the sides and by the top of the screen */}
+        <div ref={words} className="pointer-events-none absolute inset-0">
+          <div className="absolute left-[42vw] top-0 flex w-max -translate-x-1/2 flex-col items-center">
+            {/* cream, like letters cut out of the ink */}
+            <h1 className="-mt-[0.07em] whitespace-nowrap text-[min(33vh,20vw)] uppercase leading-[0.85] text-cream">Lorem ipsum</h1>
+            <p className="mt-[6vh] max-w-[36ch] text-center text-[clamp(0.95rem,1.2vw,1.2rem)] leading-snug text-cream">
+              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+            </p>
           </div>
         </div>
-      </nav>
 
-      <WorkFilters />
+        <ul>
+          {work.map((c, i) => (
+            <li key={c.slug}>
+              <a
+                ref={(el) => {
+                  cards.current[i] = el;
+                }}
+                href="#"
+                className="group absolute block overflow-hidden bg-moss text-cream"
+              >
+                {/* the photo printed in the page's greens; its real colour comes through on hover */}
+                <img
+                  src={c.image.src}
+                  alt={c.image.alt}
+                  className="absolute inset-0 h-full w-full object-cover [filter:url(#duo-deep)] transition-[filter,transform] duration-700 group-hover:scale-[1.03] group-hover:[filter:none]"
+                />
+                <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-4 bg-gradient-to-t from-moss/60 to-transparent p-5 pt-16 [text-shadow:0_1px_12px_rgb(0_0_0/0.3)]">
+                  <h3 className="text-[clamp(1.1rem,1.5vw,1.5rem)] leading-tight">{c.title}</h3>
+                  <span className="text-[0.76rem] italic opacity-85">{kind(c.kind)}</span>
+                </div>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
     </section>
   );
 }

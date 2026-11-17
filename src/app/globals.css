@@ -2,6 +2,8 @@
 
 @theme {
   --font-display: var(--font-plex), "Courier New", monospace;
+  --font-heading: var(--font-gloock), Georgia, serif; /* every heading */
+  --font-sans: var(--font-body), system-ui, sans-serif; /* body text */
   --color-leaf: #e6ecd8; /* text: light cream white with a breath of green */
   --color-cream: #e9ecdc; /* the cream paper cells */
   --color-moss: #1f3315; /* dark green ink on the cream cells */
@@ -9,7 +11,14 @@
 }
 
 body {
-  background: #0d1a0a;
+  background: var(--color-cream); /* the canvas paints the paper on top of this */
   color: var(--color-leaf);
 }
 
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-heading);
+  font-weight: 400;
+}
