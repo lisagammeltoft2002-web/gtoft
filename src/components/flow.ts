@@ -17,6 +17,7 @@
 
 import { DUNE_GLSL } from "./dune-glsl";
 import { crest, hash, ink, KEEP, landingSpots, rng, vnoise, type Disc } from "./sand";
+import { liveColours, livePalette, rgb01 } from "./palette";
 
 /* ---------- the timeline, in progress P (0 … 1 over the whole journey) ---------- */
 
@@ -467,6 +468,8 @@ uniform float ground;  /* how far below its final place the ground is right now,
 uniform vec2 canvasPx;
 out vec4 o;
 ${DUNE_GLSL}
+const vec3 LIGHT = vec3(104.0, 132.0, 88.0) / 255.0;  /* the sand's palest tone (a uniform at run time) */
+const vec3 SKY = vec3(0.78, 0.87, 0.97);              /* a clear, bright sky blue for the air and the haze */
 float vnoise(vec2 p) {
   vec2 g = p / 110.0, i = floor(g), f = g - i;
   vec2 u = f * f * (3.0 - 2.0 * f);
@@ -485,6 +488,11 @@ void main() {
   float rim = 0.7 * smoothstep(r - 0.3 * H, r - feather * 0.5, dist) * inside;
   float cover = fade * inside;
   vec3 ink = mix(GREEN, DEEP, rim * fade);
+  /* a softly lit sphere: the sun from the upper left brightens that side towards the palest sand
+     tone, the lower right stays deep */
+  vec2 n = (px - c) / r;
+  float lit = smoothstep(-0.35, 0.9, dot(n, normalize(vec2(-0.6, -0.8))));
+  ink = mix(ink, LIGHT, 0.55 * lit);
 
   /* peeled from the top (mirrors releaseAt): as the wind takes a spot's grains the ink there thins
      out at the same pace, crumbling in the ball's own 1-2px grain, so there is never an edge */
@@ -500,10 +508,17 @@ void main() {
   /* the dunes, forming where the sand has arrived */
   if (fill > 0.3) {
     vec2 du = dunes(px - vec2(0.0, ground), res, fill, 0.3);
-    ink = mix(ink, mix(GREEN, DEEP, smoothstep(0.35, 0.85, du.x)), du.y);
-    cover = mix(cover, du.x, du.y);
+    /* depth: the far (higher) ranges fade into a pale sky haze, the near ones stay rich and warm */
+    float far = 1.0 - smoothstep(0.58 * H, 0.95 * H, px.y - ground);
+    vec3 dc = mix(mix(LIGHT, GREEN, smoothstep(0.3, 0.7, du.x)), DEEP, smoothstep(0.6, 0.95, du.x));
+    dc = mix(dc, mix(LIGHT, SKY, 0.45), 0.6 * far);
+    ink = mix(ink, dc, du.y);
+    cover = mix(cover, du.x * (1.0 - 0.35 * far), du.y);
   }
   o = vec4(paperGrain(px, cover, ink), 1.0);
+  /* the air: a soft, bright sky at the top of the screen, only on the bare paper */
+  float air = (1.0 - smoothstep(0.0, 0.65 * H, px.y)) * (1.0 - smoothstep(0.0, 0.25, cover));
+  o.rgb = mix(o.rgb, SKY, 0.5 * air);
 }`;
 
 /* ---------- a small renderer: paper canvas behind, sand canvas in front ---------- */
@@ -515,7 +530,8 @@ export function discAt(W: number, H: number): Disc {
 
 function program(gl: WebGL2RenderingContext, vs: string, fs: string) {
   const prog = gl.createProgram()!;
-  for (const [type, src] of [[gl.VERTEX_SHADER, vs], [gl.FRAGMENT_SHADER, fs]] as const) {
+  /* the fragment shaders take their colours as uniforms, from the live palette (palette.ts) */
+  for (const [type, src] of [[gl.VERTEX_SHADER, vs], [gl.FRAGMENT_SHADER, liveColours(fs)]] as const) {
     const s = gl.createShader(type)!;
     gl.shaderSource(s, src);
     gl.compileShader(s);
@@ -617,6 +633,11 @@ export function createFlow(paperCanvas: HTMLCanvasElement, sandCanvas: HTMLCanva
       pg.uniform1f(pu("fill"), duneFill(P));
       pg.uniform1f(pu("ground"), ground);
       pg.uniform2f(pu("canvasPx"), paperCanvas.width, paperCanvas.height);
+      const pal = livePalette();
+      pg.uniform3f(pu("CREAM"), ...rgb01(pal.paper));
+      pg.uniform3f(pu("GREEN"), ...rgb01(pal.ink));
+      pg.uniform3f(pu("DEEP"), ...rgb01(pal.deep));
+      pg.uniform3f(pu("LIGHT"), ...rgb01(pal.light));
       pg.bindVertexArray(pvao);
       pg.drawArrays(pg.TRIANGLES, 0, 3);
 
@@ -635,6 +656,8 @@ export function createFlow(paperCanvas: HTMLCanvasElement, sandCanvas: HTMLCanva
       gl.uniform1f(gu("clock"), clock);
       gl.uniform1f(gu("ground"), ground);
       gl.uniform1f(gu("dpr"), dpr);
+      gl.uniform3f(gu("GREEN"), ...rgb01(pal.ink));
+      gl.uniform3f(gu("LIGHT"), ...rgb01(pal.light));
       gl.uniform1f(gu("ballX"), (WIND.FAN_C * W) / H);
       gl.uniform1f(gu("aspect"), W / H);
       gl.bindVertexArray(gvao);

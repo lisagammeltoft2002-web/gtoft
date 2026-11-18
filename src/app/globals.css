@@ -2,16 +2,44 @@
 
 @theme {
   --font-display: var(--font-plex), "Courier New", monospace;
-  --font-heading: var(--font-gloock), Georgia, serif; /* every heading */
+  --font-heading: var(--font-body), system-ui, sans-serif; /* every heading: the light grotesk */
   --font-sans: var(--font-body), system-ui, sans-serif; /* body text */
-  --color-leaf: #e6ecd8; /* text: light cream white with a breath of green */
-  --color-cream: #e9ecdc; /* the cream paper cells */
-  --color-moss: #1f3315; /* dark green ink on the cream cells */
+  --color-leaf: #f1f0e9; /* text on the ink: the paper colour (see palette.ts, "meadow") */
+  --color-cream: #f1f0e9; /* the paper: a warm, bright white */
+  --color-moss: #1d2a17; /* the text on the glass */
+  --color-surround: #e6e8e3; /* the soft grey around the framed page */
   --color-rule: rgb(230 236 214 / 0.42); /* the net's strokes: thin cream lines */
 }
 
+/* Frosted white glass, the one container style used everywhere (UI UX Pro Max "Glassmorphism":
+   16px backdrop blur, translucent white, 1px light border, a light reflection on the top edge).
+   The paper is pale, so the fill runs a little stronger than the 15–30% default and a soft
+   green shadow lifts it off the cream. Text on it is moss for contrast. */
+@utility glass {
+  /* the glass's tint is --glass (white by default; the dev colour picker can change it) */
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--glass, #fff) 50%, transparent),
+    color-mix(in srgb, var(--glass, #fff) 22%, transparent) 60%,
+    color-mix(in srgb, var(--glass, #fff) 30%, transparent)
+  );
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  backdrop-filter: blur(24px) saturate(1.4);
+  border: 1px solid color-mix(in srgb, var(--glass, #fff) 60%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--glass, #fff) 80%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--glass, #fff) 15%, transparent),
+    0 18px 50px -20px color-mix(in srgb, var(--color-moss) 35%, transparent);
+  color: var(--color-moss);
+}
+
+:root {
+  --glass: #f7faf2;
+  --ink: #7aa05a;
+}
+
 body {
-  background: var(--color-cream); /* the canvas paints the paper on top of this */
+  background: var(--color-surround); /* the canvas paints the paper on top of this */
   color: var(--color-leaf);
 }
 
@@ -20,5 +48,6 @@ h1,
 h2,
 h3 {
   font-family: var(--font-heading);
-  font-weight: 400;
+  font-weight: 300;
+  letter-spacing: -0.035em;
 }

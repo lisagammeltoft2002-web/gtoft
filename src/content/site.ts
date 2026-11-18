@@ -172,8 +172,8 @@ export const caseStudies: CaseStudy[] = [
     year: "2026",
     tilt: -5,
     image: {
-      src: "/images/work-fjall.jpg",
-      alt: "The new velory.com home page",
+      src: "/images/work-layer-up.jpg",
+      alt: "Layer Up poster: a fleece jacket on a blue panel over snowy mountains",
     },
     outcome:
       "A new website built around how Velory actually sells: problem first, proof early, and a demo that asks for one field. Research to launch in four months.",
@@ -282,8 +282,8 @@ export const caseStudies: CaseStudy[] = [
     year: "2026",
     tilt: 4,
     image: {
-      src: "/images/gallery-haze.jpg",
-      alt: "Velory Studio, chat on the left and the finished piece on the right",
+      src: "/images/work-unknown.jpg",
+      alt: "Uncover the Unknown: snowy peaks under a thin grid with coordinates",
     },
     outcome:
       "It started as a faster way to make banners. Now anyone at Velory creates on-brand decks, films and website images in minutes.",
@@ -344,8 +344,8 @@ export const caseStudies: CaseStudy[] = [
     year: "2026",
     tilt: -3,
     image: {
-      src: "/images/work-vav.jpg",
-      alt: "Actionable Insights in the Velory portal",
+      src: "/images/work-mirror-field.jpg",
+      alt: "A mirrored glass block standing in a golden field below the hills",
     },
     outcome:
       "Turning a company’s IT data into clear next steps, so saving money becomes the obvious choice.",

@@ -19,9 +19,12 @@ float bump(float x, float c, float w) { float d = (x - c) / w; return exp(-d * d
 /* the ball's grain (1-2px clumps, loudest in the half-tones) and the paper speckle */
 vec3 paperGrain(vec2 px, float cover, vec3 ink) {
   vec2 g = floor(px);
+  /* the grain lives only in the green: bare paper is flat cream, and the grain fades in softly
+     with the first trace of ink so there is no edge where it starts */
+  float inked = smoothstep(0.0, 0.06, cover);
   float n = 0.6 * hash(g) + 0.4 * hash(floor(g / 2.0) + vec2(0.0, 9173.0)) - 0.5;
-  cover = clamp(cover + n * (0.22 + 1.5 * cover * (1.0 - cover)), 0.0, 1.0);
-  float sp = (hash(g + vec2(5101.0, 77.0)) - 0.5) * 20.0 / 255.0;
+  cover = clamp(cover + n * inked * (0.22 + 1.5 * cover * (1.0 - cover)), 0.0, 1.0);
+  float sp = inked * (hash(g + vec2(5101.0, 77.0)) - 0.5) * 20.0 / 255.0;
   return mix(CREAM, ink, cover) + vec3(sp, sp, sp * 0.9);
 }
 
