@@ -1,27 +1,21 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, Inter_Tight } from "next/font/google";
+import localFont from "next/font/local";
 import { site } from "@/content/site";
-import { DuoFilter } from "@/components/Tinted";
 import "./globals.css";
 
-/* a thin mono with a typewriter feel that stays easy to read */
-const plex = IBM_Plex_Mono({ variable: "--font-plex", subsets: ["latin"], weight: ["200", "300"], style: ["normal", "italic"] });
-
-/* every heading and the body: a clean, modern grotesk (light for the big type) */
-const inter = Inter_Tight({ variable: "--font-body", subsets: ["latin"], weight: ["300", "400", "500"] });
+/* Fraunces: a soft, slightly wonky old-style serif, warm and organic like the sunflowers.
+   A fixed cut (semibold, softest, wonky, display size) baked from the variable font, so the
+   letter shapes on screen match exactly what FitText measures. Licence: src/fonts/OFL.txt */
+const fraunces = localFont({ src: "../fonts/fraunces-soft-wonk-600.woff2", variable: "--font-flower", weight: "600" });
 
 export const metadata: Metadata = {
-  title: { default: `${site.name} — ${site.role}`, template: `%s — ${site.name}` },
-  description: `${site.positioning} Based in ${site.city}.`,
+  title: site.name,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${plex.variable} ${inter.variable} antialiased`}>
-      <body>
-        <DuoFilter />
-        {children}
-      </body>
+    <html lang="en" className={fraunces.variable}>
+      <body>{children}</body>
     </html>
   );
 }

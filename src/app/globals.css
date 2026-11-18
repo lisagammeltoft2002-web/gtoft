@@ -1,53 +1,41 @@
 @import "tailwindcss";
 
-@theme {
-  --font-display: var(--font-plex), "Courier New", monospace;
-  --font-heading: var(--font-body), system-ui, sans-serif; /* every heading: the light grotesk */
-  --font-sans: var(--font-body), system-ui, sans-serif; /* body text */
-  --color-leaf: #f1f0e9; /* text on the ink: the paper colour (see palette.ts, "meadow") */
-  --color-cream: #f1f0e9; /* the paper: a warm, bright white */
-  --color-moss: #1d2a17; /* the text on the glass */
-  --color-surround: #e6e8e3; /* the soft grey around the framed page */
-  --color-rule: rgb(230 236 214 / 0.42); /* the net's strokes: thin cream lines */
-}
-
-/* Frosted white glass, the one container style used everywhere (UI UX Pro Max "Glassmorphism":
-   16px backdrop blur, translucent white, 1px light border, a light reflection on the top edge).
-   The paper is pale, so the fill runs a little stronger than the 15–30% default and a soft
-   green shadow lifts it off the cream. Text on it is moss for contrast. */
-@utility glass {
-  /* the glass's tint is --glass (white by default; the dev colour picker can change it) */
-  background: linear-gradient(
-    160deg,
-    color-mix(in srgb, var(--glass, #fff) 50%, transparent),
-    color-mix(in srgb, var(--glass, #fff) 22%, transparent) 60%,
-    color-mix(in srgb, var(--glass, #fff) 30%, transparent)
-  );
-  -webkit-backdrop-filter: blur(24px) saturate(1.4);
-  backdrop-filter: blur(24px) saturate(1.4);
-  border: 1px solid color-mix(in srgb, var(--glass, #fff) 60%, transparent);
-  box-shadow:
-    inset 0 1px 0 color-mix(in srgb, var(--glass, #fff) 80%, transparent),
-    inset 0 -1px 0 color-mix(in srgb, var(--glass, #fff) 15%, transparent),
-    0 18px 50px -20px color-mix(in srgb, var(--color-moss) 35%, transparent);
-  color: var(--color-moss);
-}
-
 :root {
-  --glass: #f7faf2;
-  --ink: #7aa05a;
+  --paper: #fdfcf9; /* almost pure white, just a touch warm */
+  --line: #ebe7df; /* the grid's 1px lines: a soft warm grey */
+  --leaf: #b0ce92; /* the lightest leaf green in the sunflower photo */
+  /* --cell-w / --cell-h: set by Grid.tsx so the net always fills the screen exactly */
+  --cell-w: 240px;
+  --cell-h: 360px;
+}
+
+/* the page is exactly the screen: no scrolling */
+html,
+body {
+  height: 100%;
+  overflow: hidden;
 }
 
 body {
-  background: var(--color-surround); /* the canvas paints the paper on top of this */
-  color: var(--color-leaf);
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(to right, var(--line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--line) 1px, transparent 1px);
+  background-size: var(--cell-w) var(--cell-h);
+  background-attachment: fixed;
 }
 
-
-h1,
-h2,
-h3 {
-  font-family: var(--font-heading);
-  font-weight: 300;
-  letter-spacing: -0.035em;
+/* the big text: it starts right at the very top edge of the screen */
+.headline {
+  position: absolute; /* FitText scales it to fill its columns */
+  inset: 0 auto auto 0;
+  margin: 0;
+  font-family: var(--font-flower), Georgia, serif;
+  font-weight: 600;
+  width: max-content; /* one line; FitText sets the size */
+  white-space: nowrap;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: #5b8bd0; /* the sky blue from the sunflower photo */
+  transform-origin: top left;
 }
