@@ -24,7 +24,7 @@ const SWIRL = 1.6; // how far dots swirl loose while changing hobby
 const ROCK = 0.55, ROCK_SPEED = 0.45; // how far and fast the easel and frame rock
 const MORPH_K = 4; // changing hobby: spring stiffness and damping (slightly bouncy)
 const MORPH_D = 3.4;
-const START = 0.6; // seconds the raw material shows before the build starts
+const START = 0.3; // seconds the raw material shows before the build starts
 const FINISHED = 2.8; // seconds the finished piece stays
 const HOVER_R = 34; // px around the cursor that dots move away from
 const HOVER_PUSH = 200; // px/s added per frame at the cursor's centre
@@ -357,7 +357,7 @@ export function Bloom({ onShape }: { onShape?: (index: number) => void } = {}) {
     <canvas
       ref={canvasRef}
       role="img"
-      aria-label="3D sculptures made of blue dots that build themselves, one hobby after another: a vase thrown on the wheel, a crocheted beanie, a sunflower painted on an easel, a dress sewn onto a dress form, and a tufted rug"
+      aria-label="3D sculptures made of blue dots that build themselves, one hobby after another: a vase thrown on the wheel, a crocheted beanie, a sunflower painted on an easel, a dress draped onto a dress form, and a tufted rug"
       className="relative block h-full w-full"
     />
   );
