@@ -4,14 +4,14 @@ import { useLayoutEffect, useRef } from "react";
 import { gridSize } from "./gridSize";
 
 const BASE = 100; // the text is laid out at 100px, then scaled
-const NAME_SHARE = 0.6; // the name takes this much of the first row's height, the role the rest
+const NAME_SHARE = 0.6; // the name takes this much of the first row's height, the role (above it) the rest
 const GAP = 0.05; // space between the two lines, as a share of the row height
 /* the photo's oval as a share of the "o"'s ink: bigger than the hole inside the letter but
    smaller than the letter, so the letter's own strokes frame it exactly (the photo sits behind) */
 const HOLE_W = 0.68, HOLE_H = 0.86;
 
-/* The headline across the first `cells` rectangles of the first row: the name on top, the
-   role below, each stretched so its actual letter shapes fill the full width.
+/* The headline across the first `cells` rectangles of the first row: the role on top, the
+   name below, each stretched so its actual letter shapes fill the full width.
    The portrait sits behind the "o" of the name, showing through the hole in the letter. */
 export function Headline({ name, role, cells, photo, alt }: { name: string; role: string; cells: number; photo: string; alt: string }) {
   const nameRef = useRef<HTMLHeadingElement>(null);
@@ -42,9 +42,10 @@ export function Headline({ name, role, cells, photo, alt }: { name: string; role
     const fit = () => {
       const { w, h } = gridSize();
       const width = w * cells, gap = h * GAP;
-      const nameH = (h - gap) * NAME_SHARE;
-      const map = fitLine(nameEl, name, width, 0, nameH);
-      fitLine(roleEl, role, width, nameH + gap, h - gap - nameH);
+      // the role on top, the name (bigger) below it
+      const nameH = (h - gap) * NAME_SHARE, roleH = h - gap - nameH;
+      fitLine(roleEl, role, width, 0, roleH);
+      const map = fitLine(nameEl, name, width, roleH + gap, nameH);
 
       // the "o" in the name: where its ink is, then the hole inside it
       const cs = getComputedStyle(nameEl);
@@ -67,12 +68,12 @@ export function Headline({ name, role, cells, photo, alt }: { name: string; role
   return (
     <header>
       <div ref={holeRef} className="headline-photo" role="img" aria-label={alt} style={{ backgroundImage: `url(${photo})` }} />
-      <h1 ref={nameRef} className="headline" style={{ fontSize: BASE }}>
-        {name}
-      </h1>
       <p ref={roleRef} className="headline" style={{ fontSize: BASE }}>
         {role}
       </p>
+      <h1 ref={nameRef} className="headline" style={{ fontSize: BASE }}>
+        {name}
+      </h1>
     </header>
   );
 }
