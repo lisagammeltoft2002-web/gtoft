@@ -1,7 +1,7 @@
-import { Bloom } from "@/components/Bloom";
 import { Cell } from "@/components/Cell";
 import { FitText } from "@/components/FitText";
 import { Grid } from "@/components/Grid";
+import { Hobbies } from "@/components/Hobbies";
 import { WindyField } from "@/components/WindyField";
 
 export default function Home() {
@@ -13,9 +13,7 @@ export default function Home() {
         <WindyField />
       </Cell>
       <Cell col={3} row={1}>
-        <div className="h-full w-full bg-(--leaf)">
-          <Bloom />
-        </div>
+        <Hobbies />
       </Cell>
     </main>
   );
