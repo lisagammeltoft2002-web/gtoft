@@ -5,10 +5,10 @@ import * as THREE from "three";
 import { buildHobbies, type Build } from "./sculptures";
 
 /* Lisa's hobbies as 3D sculptures made of thousands of tiny blue dots, each one building
-   itself live from start to finished (see sculptures.ts): parts appear where they are made.
-   The sculpture turns slowly (or rocks, when it has a front) and leans toward the cursor;
-   dots further away are smaller and fainter. Between hobbies the dots swirl loose and
-   re-form. Hovering scatters the dots, and a spring pulls them back. */
+   itself quickly from nothing to the finished piece (see sculptures.ts). The sculpture turns
+   slowly (or rocks, when it has a front) and leans toward the cursor; dots further away are
+   smaller and fainter. Between hobbies the dots swirl loose and turn into the next one.
+   Hovering scatters the dots, and a spring pulls them back. */
 
 const COLOR = [0x5b / 255, 0x8b / 255, 0xd0 / 255]; // the sky blue of the headline
 const DOTS = 20000;
@@ -20,11 +20,10 @@ const TURN = 0.42; // radians per second they turn on their own
 const LEAN_YAW = 0.7, LEAN_PITCH = 0.35; // how far they lean toward the cursor
 const LEAN_EASE = 3; // how quickly they follow it
 const SPREAD = 0.42; // how far a dot can sit off its surface; most stay close, a few stray
-const SWIRL = 1.6; // how far dots swirl loose while changing hobby
 const ROCK = 0.55, ROCK_SPEED = 0.45; // how far and fast the easel and frame rock
-const MORPH_K = 4; // changing hobby: spring stiffness and damping (slightly bouncy)
-const MORPH_D = 3.4;
-const START = 0.3; // seconds the raw material shows before the build starts
+const SWIRL = 1.6; // how far dots swirl loose while turning into the next hobby
+const CHANGE = 1.6; // seconds the turn into the next hobby takes
+const START = 0.15; // seconds the next one's start shows before it builds
 const FINISHED = 2.8; // seconds the finished piece stays
 const HOVER_R = 34; // px around the cursor that dots move away from
 const HOVER_PUSH = 200; // px/s added per frame at the cursor's centre
@@ -37,13 +36,13 @@ const NEAR_GROW = 1.12; // allowance for the nearest dots looking bigger
 const vertex = /* glsl */ `
   uniform mat3 uRot;
   uniform float uMorph, uClock, uScale, uSize, uSwirl, uPersp, uRadius;
-  attribute vec3 aNow, aPrev;
+  attribute vec3 aNow, aPrev, aSpread;
   attribute float aShow, aShowPrev;
-  attribute vec3 aSpread;
   attribute vec2 aPush, aSeed;
   varying float vNear, vShow;
 
   void main() {
+    // while turning into the next hobby the dots swirl loose, most at the halfway point
     float m = clamp(uMorph, 0.0, 1.0);
     float loose = 4.0 * m * (1.0 - m);
     vec3 swirl = vec3(
@@ -86,8 +85,8 @@ export function Bloom({ onShape }: { onShape?: (index: number) => void } = {}) {
     const builds = buildHobbies(DOTS);
 
     /* per-dot data */
-    const aNow = new Float32Array(DOTS * 3), aPrev = new Float32Array(DOTS * 3);
-    const aShow = new Float32Array(DOTS), aShowPrev = new Float32Array(DOTS);
+    const aNow = new Float32Array(DOTS * 3), aShow = new Float32Array(DOTS);
+    const aPrev = new Float32Array(DOTS * 3), aShowPrev = new Float32Array(DOTS);
     const aSpread = new Float32Array(DOTS * 3), aSeed = new Float32Array(DOTS * 2);
     const aPush = new Float32Array(DOTS * 2), vel = new Float32Array(DOTS * 2);
     const tilt = new Float32Array(DOTS * 2); // each dot gets pushed off at its own slight angle
@@ -135,13 +134,6 @@ export function Bloom({ onShape }: { onShape?: (index: number) => void } = {}) {
       upDown[h] = ud + SPREAD;
     });
 
-    /* place hobby h at build progress t into aNow / aShow */
-    const place = (h: number, t: number) => {
-      builds[h].update(t, aNow, aShow);
-      const c = centre[h];
-      for (let i = 1; i < DOTS * 3; i += 3) aNow[i] -= c;
-    };
-
     const geo = new THREE.BufferGeometry();
     geo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(DOTS * 3), 3));
     const attr = (name: string, arr: Float32Array, size: number) => {
@@ -150,25 +142,38 @@ export function Bloom({ onShape }: { onShape?: (index: number) => void } = {}) {
       geo.setAttribute(name, a);
       return a;
     };
-    const nowAttr = attr("aNow", aNow, 3), prevAttr = attr("aPrev", aPrev, 3);
-    const showAttr = attr("aShow", aShow, 1), showPrevAttr = attr("aShowPrev", aShowPrev, 1);
+    const nowAttr = attr("aNow", aNow, 3), showAttr = attr("aShow", aShow, 1);
+    const prevAttr = attr("aPrev", aPrev, 3), showPrevAttr = attr("aShowPrev", aShowPrev, 1);
     const pushAttr = attr("aPush", aPush, 2);
     attr("aSpread", aSpread, 3);
     attr("aSeed", aSeed, 2);
 
+    /* place hobby h at build progress t (into aNow / aShow) */
+    const place = (h: number, t: number) => {
+      builds[h].update(t, aNow, aShow);
+      const c = centre[h];
+      for (let i = 1; i < DOTS * 3; i += 3) aNow[i] -= c;
+      nowAttr.needsUpdate = showAttr.needsUpdate = true;
+    };
+    /* the previous positions catch up, so nothing swirls while building */
+    const settle = () => {
+      aPrev.set(aNow);
+      aShowPrev.set(aShow);
+      prevAttr.needsUpdate = showPrevAttr.needsUpdate = true;
+    };
+
     let hobby = 0;
     place(hobby, still ? 1 : 0);
-    aPrev.set(aNow);
-    aShowPrev.set(aShow);
+    settle();
 
     const rot = new THREE.Matrix3();
     const uniforms = {
       uRot: { value: rot },
-      uClock: { value: 0 },
       uMorph: { value: 1 },
+      uClock: { value: 0 },
+      uSwirl: { value: SWIRL },
       uScale: { value: 1 },
       uSize: { value: DOT_PX },
-      uSwirl: { value: SWIRL },
       uPersp: { value: PERSP },
       uRadius: { value: 10.5 }, // roughly how deep the sculptures are, for the near/far fade
       uColor: { value: new THREE.Vector3(...COLOR) },
@@ -187,7 +192,7 @@ export function Bloom({ onShape }: { onShape?: (index: number) => void } = {}) {
 
     /* size: the camera works in CSS pixels with 0,0 in the middle of the rectangle; each
        hobby is as big as the rectangle allows across its whole build */
-    let w = 1, h = 1, scale = 1;
+    let w = 1, h = 1;
     const hobbyScale: number[] = [];
     const resize = () => {
       const r = canvas.getBoundingClientRect();
@@ -238,6 +243,7 @@ export function Bloom({ onShape }: { onShape?: (index: number) => void } = {}) {
 
     /* where dot i is on screen right now (the same sum as the vertex shader), without the push */
     const e = rot.elements; // column-major
+    let scale = 1;
     const screen = (i: number, morph: number, out: Float32Array) => {
       const k = i * 3;
       const x = aPrev[k] + (aNow[k] - aPrev[k]) * morph + aSpread[k];
@@ -252,9 +258,10 @@ export function Bloom({ onShape }: { onShape?: (index: number) => void } = {}) {
     };
     const at = new Float32Array(2);
 
-    /* phases: "change" (dots swirl into the next hobby's raw material), "build", "done" */
-    let prevHobby = hobby, phase: "change" | "build" | "done" = still ? "done" : "build", clock = -START;
-    let morph = 1, morphV = 0, real = 0, spinYaw = 0.6;
+    /* phases: "build" (it builds itself), "done" (the finished piece stays), "change" (the
+       dots swirl loose and turn into the next hobby's start) */
+    let prevHobby = hobby, phase: "build" | "done" | "change" = still ? "done" : "build", clock = -START;
+    let morph = 1, real = 0, spinYaw = 0.6;
     let moving = false; // any dot still pushed out of place
     let last = performance.now(), raf = 0;
 
@@ -267,32 +274,27 @@ export function Bloom({ onShape }: { onShape?: (index: number) => void } = {}) {
 
       if (!still) {
         if (phase === "build") {
-          // build it live; aPrev follows so nothing swirls
           const t = Math.min(1, Math.max(0, clock / builds[hobby].seconds));
           place(hobby, t);
-          aPrev.set(aNow);
-          aShowPrev.set(aShow);
-          nowAttr.needsUpdate = prevAttr.needsUpdate = showAttr.needsUpdate = showPrevAttr.needsUpdate = true;
+          settle();
           if (t >= 1) {
             phase = "done";
             clock = 0;
           }
         } else if (phase === "done" && clock > FINISHED) {
-          // on to the next hobby: swirl from the finished piece into the new raw material
           prevHobby = hobby;
           hobby = (hobby + 1) % builds.length;
           onShapeRef.current?.(hobby);
-          aPrev.set(aNow);
-          aShowPrev.set(aShow);
-          place(hobby, 0);
-          nowAttr.needsUpdate = prevAttr.needsUpdate = showAttr.needsUpdate = showPrevAttr.needsUpdate = true;
+          settle(); // from the finished piece...
+          place(hobby, 0); // ...to the next one's start
           morph = 0;
-          morphV = 0;
+          clock = 0;
           phase = "change";
         } else if (phase === "change") {
-          morphV += (-MORPH_K * (morph - 1) - MORPH_D * morphV) * dt;
-          morph += morphV * dt;
-          if (Math.abs(morph - 1) < 0.01 && Math.abs(morphV) < 0.01) {
+          // eased in and out, so it never lingers at the end
+          const f = Math.min(1, clock / CHANGE);
+          morph = f * f * f * (f * (f * 6 - 15) + 10);
+          if (f >= 1) {
             morph = 1;
             prevHobby = hobby;
             phase = "build";

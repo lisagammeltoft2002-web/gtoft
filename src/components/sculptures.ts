@@ -2,7 +2,7 @@
    nothing to the finished piece, with only what's needed:
      pottery      a puck of clay on the wheel grows straight up into a vase
      crochet      a hook circles a few times while the beanie grows from the crown down
-     painting     a brush paints a sunflower in three strokes: stem, centre, petals
+     painting     a brush paints a sunflower in three strokes: stem, centre, petals, then lifts away
      sewing       the dress drapes down over the dress form
      rug tufting  the tufting gun sweeps back and forth while the rug fills in behind it
    Each hobby has the same number of dots. update(t) places every dot for build progress
@@ -25,9 +25,10 @@ const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 const ease = (v: number) => v * v * (3 - 2 * v);
 
 /* the soft growth wave: each dot has a key k (0 → 1, e.g. top to bottom) and fades in as
-   the wave front passes it; gentle start, quick middle, soft settle */
+   the wave front passes it. It gets going straight away and settles softly. */
+const grow = (t: number) => 1 - Math.pow(1 - clamp01(t), 2.2);
 const BAND = 0.14;
-const front = (t: number) => ease(t) * (1 + BAND);
+const front = (t: number) => grow(t) * (1 + BAND);
 const reveal = (t: number, k: number, band = BAND) => clamp01((front(t) - k) / band);
 
 /* ------------------------------------------------------------------ helpers */
@@ -197,8 +198,8 @@ function crochet(N: number): Build {
   // the rounds, top to bottom: the crown, the body, then the ribbed brim
   const rows: { y: number; r: number; rib: boolean }[] = [];
   for (let phi = 0.18; phi <= Math.PI / 2 + 1e-6; phi += 0.17) rows.push({ y: TOP - 5.6 * (1 - Math.cos(phi)), r: R * Math.sin(phi), rib: false });
-  for (let y = TOP - 6.3; y >= TOP - 10.6; y -= 0.7) rows.push({ y, r: R, rib: false });
-  for (let i = 0; i < 4; i++) rows.push({ y: TOP - 11 - i * 0.6, r: R + 0.25, rib: true });
+  for (let y = TOP - 6.3; y >= TOP - 7.0 - 1e-6; y -= 0.7) rows.push({ y, r: R, rib: false });
+  for (let i = 0; i < 3; i++) rows.push({ y: TOP - 7.6 - i * 0.6, r: R + 0.25, rib: true });
   const yTop = rows[0].y, yEnd = rows[rows.length - 1].y;
   const radiusAt = (y: number) => {
     for (let i = 1; i < rows.length; i++) {
@@ -216,7 +217,8 @@ function crochet(N: number): Build {
     const dy = rib ? rand(-0.25, 0.25) : (Math.abs(f - 0.5) * 2 - 0.5) * 0.5;
     const rr = r + (rib ? 0.22 * Math.cos(a * count) : 0.1 * Math.sin(f * Math.PI)) + gauss() * 0.04;
     st.set([rr * Math.cos(a), y + dy, rr * Math.sin(a)], i * 3);
-    key[i] = (yTop - y) / (yTop - yEnd);
+    // the first rounds (a little crown) are there from the start, so there's something to begin from
+    key[i] = (yTop - y) / (yTop - yEnd) - 0.12;
   }
   // the hook, drawn along +x from its tip, with a little barb at the tip
   const hook = points(nHook, (add, n) => {
@@ -240,7 +242,7 @@ function crochet(N: number): Build {
         show[o] = v;
       }
       // the hook rides the growing edge, circling three times
-      const y = lerp(yTop, yEnd, clamp01(front(t) - BAND / 2)), a = ease(t) * TAU * 3 + 0.6;
+      const y = lerp(yTop, yEnd, clamp01(front(t) + 0.12 - BAND / 2)), a = grow(t) * TAU * 3 + 0.6;
       const r = radiusAt(y) + 0.25;
       const tip = [r * Math.cos(a), y, r * Math.sin(a)];
       const dir = [Math.cos(a) * 0.5 - Math.sin(a) * 0.25, 0.83, Math.sin(a) * 0.5 + Math.cos(a) * 0.25];
@@ -261,31 +263,21 @@ function crochet(N: number): Build {
 function painting(N: number): Build {
   const CANVAS = { x0: -5, x1: 5, y0: -2.7, y1: 9.3, z: 0.35 };
   const PAINT_Z = CANVAS.z + 0.12, FLOWER = [0, 5.2];
-  const nEasel = Math.round(N * 0.2), nCanvas = Math.round(N * 0.34), nBrush = Math.round(N * 0.04);
-  const nPaint = N - nEasel - nCanvas - nBrush;
+  const nCanvas = Math.round(N * 0.42), nBrush = Math.round(N * 0.04);
+  const nPaint = N - nCanvas - nBrush;
 
-  const easel = points(nEasel, (add, n) => {
-    const legs = [
-      [[-3.8, 10.5, 0.9], [-6.2, -10.5, 2.4]],
-      [[3.8, 10.5, 0.9], [6.2, -10.5, 2.4]],
-      [[0, 10, -0.4], [0, -10.5, -5.6]],
-      [[-6, -3.15, 1.15], [6, -3.15, 1.15]], // the ledge the canvas stands on
-      [[-1.6, 9.7, 0.65], [1.6, 9.7, 0.65]], // the clamp at the top
-    ];
-    legs.forEach((l, i) => tube(add, l, i < 3 ? 0.28 : 0.36, Math.round(n / legs.length)));
-  });
+  // just the canvas: its face, with its edge a little firmer so it reads as a canvas
   const canvas = points(nCanvas, (add, n) => {
     const { x0, x1, y0, y1, z } = CANVAS;
     for (let k = 0; k < n; k++) {
-      const r = Math.random();
-      if (r < 0.74) add(rand(x0, x1), rand(y0, y1), z);
-      else if (r < 0.9) {
-        const edge = (Math.random() * 4) | 0, zz = rand(-z, z);
-        if (edge === 0) add(rand(x0, x1), y0, zz);
-        else if (edge === 1) add(rand(x0, x1), y1, zz);
-        else if (edge === 2) add(x0, rand(y0, y1), zz);
-        else add(x1, rand(y0, y1), zz);
-      } else add(rand(x0, x1), rand(y0, y1), -z);
+      if (Math.random() < 0.85) add(rand(x0, x1), rand(y0, y1), z);
+      else {
+        const edge = (Math.random() * 4) | 0, j = gauss() * 0.06;
+        if (edge === 0) add(rand(x0, x1), y0 + j, z);
+        else if (edge === 1) add(rand(x0, x1), y1 + j, z);
+        else if (edge === 2) add(x0 + j, rand(y0, y1), z);
+        else add(x1 + j, rand(y0, y1), z);
+      }
     }
   });
 
@@ -293,7 +285,7 @@ function painting(N: number): Build {
   const strokes: { share: number; from: number; to: number; at: (u: number) => number[] }[] = [];
   const stem = smooth([[0.3, -2.5], [-0.1, 0.5], [0.2, 2.6], [0, FLOWER[1] - 1]], 16);
   // 1: the stem, bottom to top
-  strokes.push({ share: 0.16, from: 0, to: 0.28, at: (u) => {
+  strokes.push({ share: 0.16, from: 0, to: 0.28, at: (u) => { // matches STEM below
     const f = u * (stem.length - 1), i = Math.min(stem.length - 2, Math.floor(f)), g = f - i, a = rand(0, TAU);
     return [lerp(stem[i][0], stem[i + 1][0], g) + Math.cos(a) * 0.2, lerp(stem[i][1], stem[i + 1][1], g), PAINT_Z + Math.sin(a) * 0.05];
   } });
@@ -327,6 +319,28 @@ function painting(N: number): Build {
   // the brush, drawn along +x from its tip: bristles, a ferrule and a long handle
   const BD = [0.42, 0.5, 0.76].map((v, _, a) => v / Math.hypot(...a));
   const [bs, bq] = frame(BD);
+  const STEM = [0, 0.28], CENTRE = [0.33, 0.6], PETALS = [0.65, 0.95];
+  const stemAt = (u: number) => {
+    const f = clamp01(u) * (stem.length - 1), i = Math.min(stem.length - 2, Math.floor(f)), g = f - i;
+    return [lerp(stem[i][0], stem[i + 1][0], g), lerp(stem[i][1], stem[i + 1][1], g)];
+  };
+  const centreAt = (u: number) => {
+    const r = 1.35 * Math.sqrt(clamp01(u)), a = Math.PI / 2 + clamp01(u) * TAU * 1.5;
+    return [FLOWER[0] + r * Math.cos(a), FLOWER[1] + r * Math.sin(a)];
+  };
+  const petalsAt = (u: number) => {
+    const a = 1.2 + clamp01(u) * TAU;
+    return [FLOWER[0] + 2.8 * Math.cos(a), FLOWER[1] + 2.8 * Math.sin(a)];
+  };
+  const within = (te: number, [a, b]: number[]) => (te - a) / (b - a);
+  const mix2 = (p: number[], q: number[], g: number) => [lerp(p[0], q[0], ease(clamp01(g))), lerp(p[1], q[1], ease(clamp01(g)))];
+  const brushAt = (te: number) => {
+    if (te <= STEM[1]) return stemAt(within(te, STEM));
+    if (te < CENTRE[0]) return mix2(stemAt(1), centreAt(0), within(te, [STEM[1], CENTRE[0]]));
+    if (te <= CENTRE[1]) return centreAt(within(te, CENTRE));
+    if (te < PETALS[0]) return mix2(centreAt(1), petalsAt(0), within(te, [CENTRE[1], PETALS[0]]));
+    return petalsAt(within(te, PETALS));
+  };
   const brush = points(nBrush, (add, n) => {
     for (let k = 0; k < n; k++) {
       const x = Math.random() * 7, a = rand(0, TAU);
@@ -334,7 +348,6 @@ function painting(N: number): Build {
       add(x, Math.cos(a) * r, Math.sin(a) * r);
     }
   });
-  const REST = [4.4, -2.75, 1.6]; // the brush ends up laid on the ledge
 
   return {
     name: "painting",
@@ -342,30 +355,22 @@ function painting(N: number): Build {
     view: 0.1,
     spin: false,
     update(t, pos, show) {
-      pos.set(easel, 0);
-      pos.set(canvas, nEasel * 3);
-      let o = nEasel + nCanvas;
+      pos.set(canvas, 0);
+      let o = nCanvas;
       show.fill(1, 0, o);
-      // paint appears right where the brush is, softly
-      const te = ease(t);
-      let head = 0;
+      // paint appears softly as the brush passes
+      const te = grow(t);
       for (let i = 0; i < nPaint; i++, o++) {
         pos.set(paintPos.subarray(i * 3, i * 3 + 3), o * 3);
-        const v = clamp01((te - paintWhen[i]) / 0.04);
-        show[o] = v;
-        if (v > 0) head = i;
+        show[o] = clamp01((te - paintWhen[i]) / 0.04);
       }
-      // the brush tip sits on the newest paint; when the painting is done it goes to the ledge
-      const done = ease(clamp01((te - 0.95) / 0.05));
-      const lift = te < paintWhen[0] ? 0.8 : 0.1;
-      const tip = [
-        lerp(paintPos[head * 3], REST[0], done),
-        lerp(paintPos[head * 3 + 1], REST[1], done),
-        lerp(paintPos[head * 3 + 2] + lift, REST[2], done),
-      ];
+      // the brush glides along its path; when the painting is done it lifts away and fades
+      const done = ease(clamp01((t - 0.9) / 0.1));
+      const [bx, by] = brushAt(te);
+      const tip = [bx, by, PAINT_Z + 0.25 + 2.5 * done];
       for (let i = 0; i < nBrush; i++, o++) {
         place(brush, i, tip, BD, bs, bq, pos, o);
-        show[o] = 1;
+        show[o] = 1 - done;
       }
     },
   };
@@ -390,7 +395,7 @@ function sewing(N: number): Build {
 
   const TOP = 7.4, HEM = -7.4; // the dress is sewn from the shoulders down to the hem
   const dress = points(nDress, (add, n) => {
-    const nb = Math.round(n * 0.27), ns = Math.round(n * 0.58), nh = Math.round(n * 0.07);
+    const ns = Math.round(n * 0.6), nh = Math.round(n * 0.07), nb = n - ns - nh;
     lathe(add, [[6.3, 3.95, 2.5], [5.2, 3.95, 2.75], [4, 3.85, 2.85], [2.4, 3.3, 2.5], [1, 2.95, 2.25]], nb);
     for (let k = 0; k < ns; k++) {
       // the skirt flares from the waist into soft folds
@@ -401,8 +406,6 @@ function sewing(N: number): Build {
       const a = rand(0, TAU), fold = 1 + 0.08 * Math.sin(9 * a);
       add(6.55 * fold * Math.cos(a), HEM + gauss() * 0.06, 5.45 * fold * Math.sin(a));
     }
-    const rest = n - nb - ns - nh;
-    for (const s of [-1, 1]) tube(add, smooth([[s * 2.3, 6.2, 2.1], [s * 2.7, 7.3, 0.4], [s * 2.6, 7.2, -1.2], [s * 2.3, 6.2, -2.1]], 10), 0.22, Math.round(rest / 2));
   });
 
   const keyOf = (y: number) => (TOP - y) / (TOP - HEM);
@@ -444,7 +447,7 @@ function rugTufting(N: number): Build {
     const border = Math.max(0, 1 - Math.min(W - Math.abs(x), H - Math.abs(y)) / 0.6);
     return 0.35 + 0.9 * ring + 0.7 * centre + 0.5 * border;
   };
-  const nFrame = Math.round(N * 0.14), nCloth = Math.round(N * 0.2), nGun = Math.round(N * 0.04);
+  const nFrame = Math.round(N * 0.14), nCloth = Math.round(N * 0.05), nGun = Math.round(N * 0.05);
   const nTuft = N - nFrame - nCloth - nGun;
 
   const frameDots = points(nFrame, (add, n) => {
@@ -467,12 +470,14 @@ function rugTufting(N: number): Build {
     tufts.set([x, y, pile(x, y) * (0.7 + 0.3 * Math.random())], i * 3);
     key[i] = (H - y) / (2 * H);
   }
-  // the tufting gun, behind the cloth (the tufts come out the front)
+  // the tufting gun, in front of the rug: its nozzle at 0,0,0 pressed to the cloth, the body
+  // rising up and toward you, with a handle (drawn so you can see it face on)
   const gun = points(nGun, (add, n) => {
-    tube(add, [[0, 0, -0.2], [0, 0, -1.4]], 0.18, Math.round(n * 0.25));
-    tube(add, [[0, 0, -1.4], [0, 0.2, -4.2]], 0.55, Math.round(n * 0.5));
-    tube(add, [[0, 0, -3.2], [0, -2, -3.8]], 0.32, n - Math.round(n * 0.75));
+    tube(add, [[0, 0, 0], [0.1, 0.9, 0.8]], 0.14, Math.round(n * 0.14));
+    tube(add, [[0.1, 0.9, 0.8], [0.6, 4.6, 2.6]], 0.45, Math.round(n * 0.6));
+    tube(add, [[0.4, 3, 1.9], [2.2, 2.2, 2.6]], 0.28, n - Math.round(n * 0.74));
   });
+  const GUN_Z = 1.6; // just above the tallest pile
 
   return {
     name: "rug tufting",
@@ -493,13 +498,13 @@ function rugTufting(N: number): Build {
         show[o] = v;
       }
       // the gun sweeps back and forth four times, riding the band
-      const gx = -W * 0.9 * Math.cos(Math.PI * 4 * ease(t));
+      const gx = -W * 0.9 * Math.cos(Math.PI * 4 * grow(t));
       const gy = H - clamp01(front(t) - BAND / 2) * 2 * H;
       const gunShow = 1 - clamp01((t - 0.9) / 0.1);
       for (let i = 0; i < nGun; i++, o++) {
         pos[o * 3] = gx + gun[i * 3];
         pos[o * 3 + 1] = gy + gun[i * 3 + 1];
-        pos[o * 3 + 2] = gun[i * 3 + 2];
+        pos[o * 3 + 2] = GUN_Z + gun[i * 3 + 2];
         show[o] = gunShow;
       }
     },
