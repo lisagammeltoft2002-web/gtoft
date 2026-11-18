@@ -1,26 +1,27 @@
-/* Lisa's hobbies as little journeys of 3D dot sculptures. Each hobby is a few stages that
-   the dots re-form through, from raw material to the finished thing:
-     pottery      clay puck on the wheel → centred cone → opened bowl → pulled-up cylinder → vase
-     crochet      ball of yarn → chain unwinding from it → the crown in rounds → half a beanie → beanie
-     painting     blank canvas on an easel → stem and leaves → the flower's centre → petals → sunflower
-     sewing       folded fabric → spread out with the pattern traced → pieces cut → the dress → on a dress form
-     rug tufting  cloth on the frame with the design drawn → ring tufted → centre → all tufted → rug with fringe
-   Units: about ±10, y up, z toward you, turning around the y axis. Every stage has exactly
-   the same number of dots; they are sorted by height so dots travel to a matching height. */
+/* Lisa's hobbies as 3D dot sculptures that build themselves, live, from start to finished:
+     pottery      a puck of clay on the wheel grows up into a vase
+     crochet      a hook works round after round of a beanie; the ball of yarn shrinks
+     painting     a brush paints a sunflower on the canvas, stroke by stroke
+     sewing       the dress is sewn onto the dress form from the shoulders down
+     rug tufting  the tufting gun fills in the rug on its frame, row by row
+   Each hobby has the same number of dots. update(t) places every dot for build progress
+   t (0 → 1) and says how visible it is, so parts appear where they are made.
+   Units: about ±10, y up, z toward you, turning around the y axis. */
 
-export const NAMES = ["pottery", "crochet", "painting", "sewing", "rug tufting"];
-
-/* view: how far we look down onto it (radians). spin: turns all the way round; otherwise it
-   rocks gently, facing you (for the easel and the tufting frame, which have a front). */
-export type Stage = { hobby: number; view: number; spin: boolean; hold: number; points: Float32Array };
-
-type Add = (x: number, y: number, z: number) => void;
-type Part = [number, (add: Add, n: number) => void];
+export type Build = {
+  name: string;
+  seconds: number; // how long the build takes
+  view: number; // how far we look down onto it (radians)
+  spin: boolean; // turns all the way round; otherwise it rocks gently, facing you
+  update: (t: number, pos: Float32Array, show: Float32Array) => void;
+};
 
 const TAU = Math.PI * 2;
 const rand = (a = 0, b = 1) => a + Math.random() * (b - a);
 const gauss = () => Math.sqrt(-2 * Math.log(1 - Math.random())) * Math.cos(TAU * Math.random());
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+const ease = (v: number) => v * v * (3 - 2 * v);
 
 /* ------------------------------------------------------------------ helpers */
 
@@ -57,21 +58,26 @@ function picker(weights: number[]) {
   };
 }
 
-/* a surface of revolution round the y axis: profile of [y, r] or [y, rx, rz] (oval) */
-function lathe(add: Add, prof: number[][], n: number, ridge = 0) {
-  const P = smooth(prof);
-  const rx = (p: number[]) => p[1], rz = (p: number[]) => p[2] ?? p[1];
-  const seg = P.slice(1).map((p, i) => {
-    const q = P[i];
-    return Math.hypot(p[0] - q[0], p[1] - q[1]) * ((rx(p) + rx(q) + rz(p) + rz(q)) / 4 + 0.25);
-  });
-  const pick = picker(seg);
-  for (let k = 0; k < n; k++) {
-    const i = pick(), t = Math.random(), a = rand(0, TAU);
-    const y = lerp(P[i][0], P[i + 1][0], t);
-    const bump = ridge ? ridge * Math.sin(y * 5.5) : 0;
-    add((lerp(rx(P[i]), rx(P[i + 1]), t) + bump) * Math.cos(a), y, (lerp(rz(P[i]), rz(P[i + 1]), t) + bump) * Math.sin(a));
+/* two directions square to u (and to each other) */
+function frame(u: number[]) {
+  const ref = Math.abs(u[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0];
+  let p = [u[1] * ref[2] - u[2] * ref[1], u[2] * ref[0] - u[0] * ref[2], u[0] * ref[1] - u[1] * ref[0]];
+  const pl = Math.hypot(...p);
+  p = p.map((v) => v / pl);
+  const q = [u[1] * p[2] - u[2] * p[1], u[2] * p[0] - u[0] * p[2], u[0] * p[1] - u[1] * p[0]];
+  return [p, q];
+}
+
+/* fixed points: n dots from a generator */
+type Add = (x: number, y: number, z: number) => void;
+function points(n: number, gen: (add: Add, n: number) => void) {
+  const pts: number[] = [];
+  gen((x, y, z) => pts.push(x, y, z), n);
+  while (pts.length < n * 3) {
+    const k = ((Math.random() * (pts.length / 3)) | 0) * 3;
+    pts.push(pts[k], pts[k + 1], pts[k + 2]);
   }
+  return new Float32Array(pts.slice(0, n * 3));
 }
 
 /* points around a tube that follows a path */
@@ -93,459 +99,457 @@ function tube(add: Add, path: number[][], radius: number, n: number) {
   }
 }
 
-/* two directions square to u (and to each other) */
-function frame(u: number[]) {
-  const ref = Math.abs(u[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0];
-  let p = [u[1] * ref[2] - u[2] * ref[1], u[2] * ref[0] - u[0] * ref[2], u[0] * ref[1] - u[1] * ref[0]];
-  const pl = Math.hypot(...p);
-  p = p.map((v) => v / pl);
-  const q = [u[1] * p[2] - u[2] * p[1], u[2] * p[0] - u[0] * p[2], u[0] * p[1] - u[1] * p[0]];
-  return [p, q];
+/* a surface of revolution: profile of [y, rx, rz] (an oval in plan) */
+function lathe(add: Add, prof: number[][], n: number) {
+  const P = smooth(prof);
+  const pick = picker(P.slice(1).map((p, i) => Math.hypot(p[0] - P[i][0], p[1] - P[i][1]) * ((p[1] + P[i][1] + p[2] + P[i][2]) / 4 + 0.25)));
+  for (let k = 0; k < n; k++) {
+    const i = pick(), t = Math.random(), a = rand(0, TAU);
+    add(lerp(P[i][1], P[i + 1][1], t) * Math.cos(a), lerp(P[i][0], P[i + 1][0], t), lerp(P[i][2], P[i + 1][2], t) * Math.sin(a));
+  }
 }
 
-/* a flat 2D shape (an SVG path) that can be filled with dots and traced along its edge */
-let svg: SVGSVGElement | null = null;
-const pt = typeof DOMPoint === "undefined" ? null : new DOMPoint();
-function shape(d: string, box: [number, number, number, number]) {
-  const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  p.setAttribute("d", d);
-  svg!.appendChild(p);
-  const len = p.getTotalLength();
-  return {
-    fill(n: number, put: (u: number, v: number) => void) {
-      for (let k = 0, tries = 0; k < n && tries < n * 40; tries++) {
-        pt!.x = rand(box[0], box[1]);
-        pt!.y = rand(box[2], box[3]);
-        if (p.isPointInFill(pt!)) {
-          put(pt!.x, pt!.y);
-          k++;
-        }
-      }
-    },
-    edge(n: number, put: (u: number, v: number) => void, dashed = false) {
-      for (let k = 0; k < n; ) {
-        const t = Math.random() * len;
-        if (dashed && Math.floor(t / 0.45) % 2) continue;
-        const q = p.getPointAtLength(t);
-        put(q.x, q.y);
-        k++;
-      }
-    },
+/* where along a round lathe profile [y, r] share u of its surface lies: returns [y, r] */
+function profileMap(prof: number[][]) {
+  const P = smooth(prof);
+  const cum: number[] = [];
+  let s = 0;
+  P.slice(1).forEach((p, i) => cum.push((s += Math.hypot(p[0] - P[i][0], p[1] - P[i][1]) * ((p[1] + P[i][1]) / 2 + 0.25))));
+  return (u: number) => {
+    const target = u * s;
+    let lo = 0, hi = cum.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (cum[mid] < target) lo = mid + 1;
+      else hi = mid;
+    }
+    const before = lo ? cum[lo - 1] : 0, f = (target - before) / (cum[lo] - before || 1);
+    return [lerp(P[lo][0], P[lo + 1][0], f), lerp(P[lo][1], P[lo + 1][1], f)];
   };
 }
 
-/* build one stage from parts, each given a share of the dots */
-function compose(N: number, parts: Part[]) {
-  const pts: number[][] = [];
-  const add: Add = (x, y, z) => pts.push([x, y, z]);
-  const total = parts.reduce((s, [w]) => s + w, 0);
-  let used = 0;
-  parts.forEach(([w, f], i) => {
-    const n = i === parts.length - 1 ? N - used : Math.round((N * w) / total);
-    used += n;
-    f(add, n);
-  });
-  while (pts.length < N) pts.push(pts[(Math.random() * pts.length) | 0].slice());
-  pts.length = N;
-  return pts;
+/* place a shape drawn along +x (with y, z across it) at `at`, pointing along d */
+function place(src: Float32Array, i: number, at: number[], d: number[], s: number[], q: number[], pos: Float32Array, o: number) {
+  const x = src[i * 3], y = src[i * 3 + 1], z = src[i * 3 + 2];
+  pos[o * 3] = at[0] + d[0] * x + s[0] * y + q[0] * z;
+  pos[o * 3 + 1] = at[1] + d[1] * x + s[1] * y + q[1] * z;
+  pos[o * 3 + 2] = at[2] + d[2] * x + s[2] * y + q[2] * z;
 }
 
 /* ------------------------------------------------------------------ pottery */
 
-const WHEEL_Y = -8.4;
-const wheel: Part[1] = (add, n) => {
-  for (let k = 0; k < n; k++) {
-    const a = rand(0, TAU);
-    if (Math.random() < 0.3) {
-      const b = rand(-Math.PI / 2, Math.PI / 2);
-      add((7.4 + 0.4 * Math.cos(b)) * Math.cos(a), WHEEL_Y - 0.45 + 0.4 * Math.sin(b), (7.4 + 0.4 * Math.cos(b)) * Math.sin(a));
-    } else {
-      const r = Math.round(Math.sqrt(Math.random()) * 7.2) + gauss() * 0.07; // fine grooves
-      add(r * Math.cos(a), WHEEL_Y - 0.1, r * Math.sin(a));
+function pottery(N: number): Build {
+  const WHEEL_Y = -8.4;
+  const nWheel = Math.round(N * 0.25), nClay = N - nWheel;
+  const wheel = points(nWheel, (add, n) => {
+    for (let k = 0; k < n; k++) {
+      const a = rand(0, TAU);
+      if (Math.random() < 0.3) {
+        const b = rand(-Math.PI / 2, Math.PI / 2);
+        add((7.4 + 0.4 * Math.cos(b)) * Math.cos(a), WHEEL_Y - 0.45 + 0.4 * Math.sin(b), (7.4 + 0.4 * Math.cos(b)) * Math.sin(a));
+      } else {
+        const r = Math.round(Math.sqrt(Math.random()) * 7.2) + gauss() * 0.07; // fine grooves
+        add(r * Math.cos(a), WHEEL_Y - 0.1, r * Math.sin(a));
+      }
     }
+  });
+  // the clay's outline (height above the wheel, radius) as it grows: puck → tall cylinder → vase
+  const shapes = [
+    [[0, 0], [0, 2.5], [0, 4.3], [0.4, 4.6], [2.2, 4.5], [2.8, 4.1], [2.9, 2.2], [3, 0]],
+    [[0, 0], [0, 3.6], [1.4, 3.6], [6.4, 3.4], [10.9, 3.2], [11.6, 3.1], [11.7, 2.7], [10.9, 2.7], [6.4, 2.8], [1.4, 2.9], [0.8, 0]],
+    [[0, 0], [0, 3], [0.8, 3.6], [3, 5.2], [5.8, 6], [8.4, 5.6], [10.8, 4.2], [12.6, 2.6], [14, 1.9], [15.4, 2], [16.4, 2.5], [16.8, 2.8], [16.7, 2.4], [15.8, 1.9]],
+  ].map(profileMap);
+  // every clay dot keeps its share of the surface (u) and its angle, so the clay stretches
+  const keys = shapes.map(() => new Float32Array(nClay * 3));
+  for (let i = 0; i < nClay; i++) {
+    const u = Math.random(), a = rand(0, TAU);
+    shapes.forEach((map, k) => {
+      const [y, r0] = map(u);
+      const r = r0 + 0.12 * Math.sin(y * 5.5); // the throwing ridges
+      keys[k].set([r * Math.cos(a), y + WHEEL_Y, r * Math.sin(a)], i * 3);
+    });
   }
-};
-const clay = (prof: number[][]): Part[1] => (add, n) => lathe(add, prof.map(([y, r]) => [y + WHEEL_Y, r]), n, 0.12);
-
-const POTTERY: [number, Part[]][] = [
-  // a puck of clay slapped on the wheel
-  [1, [[0.7, clay([[0, 0], [0, 2.5], [0, 4.3], [0.4, 4.6], [2.2, 4.5], [2.8, 4.1], [2.9, 2.2], [3, 0]])], [0.3, wheel]]],
-  // coned up to centre it
-  [0.7, [[0.7, clay([[0, 0], [0, 3.8], [0.8, 3.7], [3.4, 2.8], [5.9, 1.7], [7.6, 0.9], [8.1, 0]])], [0.3, wheel]]],
-  // opened into a wide bowl
-  [0.55, [[0.7, clay([[0, 0], [0, 4.8], [1.2, 5.4], [3.2, 5.9], [4.6, 6.1], [4.8, 5.6], [3.6, 5], [2, 4], [1.1, 2.5], [1, 0]])], [0.3, wheel]]],
-  // the walls pulled up into a cylinder
-  [0.35, [[0.7, clay([[0, 0], [0, 3.6], [1.4, 3.4], [6.4, 3.2], [10.9, 3.1], [11.6, 3], [11.7, 2.6], [10.9, 2.6], [6.4, 2.7], [1.4, 2.8], [0.8, 0]])], [0.3, wheel]]],
-  // shaped into a vase with a neck and rim
-  [0.3, [[0.7, clay([[0, 0], [0, 3], [0.8, 3.6], [3, 5.2], [5.8, 6], [8.4, 5.6], [10.8, 4.2], [12.6, 2.6], [14, 1.9], [15.4, 2], [16.4, 2.5], [16.8, 2.8], [16.7, 2.4], [15.8, 1.9]])], [0.3, wheel]]],
-];
+  return {
+    name: "pottery",
+    seconds: 8,
+    view: 0.38,
+    spin: true,
+    update(t, pos, show) {
+      pos.set(wheel, 0);
+      show.fill(1);
+      // puck → cylinder, then cylinder → vase, in one smooth growth
+      const f = ease(t) * (keys.length - 1), k = Math.min(keys.length - 2, Math.floor(f)), g = f - k;
+      const A = keys[k], B = keys[k + 1], o = nWheel * 3;
+      for (let j = 0; j < nClay * 3; j++) pos[o + j] = A[j] + (B[j] - A[j]) * g;
+    },
+  };
+}
 
 /* ------------------------------------------------------------------ crochet */
 
-function yarnBall(cx: number, cy: number, cz: number, R: number): Part[1] {
-  return (add, n) => {
-    const wraps = Array.from({ length: 16 }, () => {
+function crochet(N: number): Build {
+  const R = 6.4, TOP = 7;
+  // the rounds, top to bottom: the crown, the body, then the ribbed brim
+  const rows: { y: number; r: number; rib: boolean }[] = [];
+  for (let phi = 0.18; phi <= Math.PI / 2 + 1e-6; phi += 0.17) rows.push({ y: TOP - 5.6 * (1 - Math.cos(phi)), r: R * Math.sin(phi), rib: false });
+  for (let y = TOP - 6.3; y >= TOP - 10.6; y -= 0.7) rows.push({ y, r: R, rib: false });
+  for (let i = 0; i < 4; i++) rows.push({ y: TOP - 11 - i * 0.6, r: R + 0.25, rib: true });
+
+  const nHook = Math.round(N * 0.04), nBall = Math.round(N * 0.16), nPom = Math.round(N * 0.08);
+  const nSt = N - nHook - nBall - nPom;
+  const ROUNDS_END = 0.88; // share of the build spent on the rounds; then the pompom
+
+  // stitches: each made at its own moment, going round and round
+  const st = new Float32Array(nSt * 3), when = new Float32Array(nSt);
+  const pickRow = picker(rows.map((r) => r.r + 0.3));
+  for (let i = 0; i < nSt; i++) {
+    const ri = pickRow(), { y, r, rib } = rows[ri], a = rand(0, TAU);
+    const count = Math.max(6, Math.round((TAU * r) / 0.85)), f = ((a / TAU) * count) % 1;
+    const dy = rib ? rand(-0.25, 0.25) : (Math.abs(f - 0.5) * 2 - 0.5) * 0.5;
+    const rr = r + (rib ? 0.22 * Math.cos(a * count) : 0.1 * Math.sin(f * Math.PI)) + gauss() * 0.04;
+    st.set([rr * Math.cos(a), y + dy, rr * Math.sin(a)], i * 3);
+    when[i] = ((ri + a / TAU) / rows.length) * ROUNDS_END;
+  }
+  // the pompom, made last, puffs up from its middle
+  const POM_Y = TOP + 1.6;
+  const pom = points(nPom, (add, n) => {
+    for (let k = 0; k < n; k++) {
+      const v = [gauss(), gauss(), gauss()], l = Math.hypot(...v), r = 1.9 * Math.pow(Math.random(), 0.25);
+      add((v[0] / l) * r, (v[1] / l) * r, (v[2] / l) * r);
+    }
+  });
+  // the ball of yarn, wound strands round a unit ball; it shrinks as the yarn is used
+  const BALL = [3.4, -9, 2.2], BALL_R = 2.8;
+  const ball = points(nBall, (add, n) => {
+    const wraps = Array.from({ length: 12 }, () => {
       let nn = [gauss(), gauss(), gauss()];
       const l = Math.hypot(...nn);
       nn = nn.map((v) => v / l);
-      const [u, v] = frame(nn);
-      return { u, v, r: R * rand(0.94, 1.02) };
+      return frame(nn);
     });
     for (let k = 0; k < n; k++) {
-      const w = wraps[(Math.random() * wraps.length) | 0], a = rand(0, TAU), r = w.r + gauss() * 0.08;
-      add(
-        cx + (w.u[0] * Math.cos(a) + w.v[0] * Math.sin(a)) * r,
-        cy + (w.u[1] * Math.cos(a) + w.v[1] * Math.sin(a)) * r,
-        cz + (w.u[2] * Math.cos(a) + w.v[2] * Math.sin(a)) * r,
-      );
+      const [u, v] = wraps[(Math.random() * wraps.length) | 0], a = rand(0, TAU), r = rand(0.94, 1.02);
+      add((u[0] * Math.cos(a) + v[0] * Math.sin(a)) * r, (u[1] * Math.cos(a) + v[1] * Math.sin(a)) * r, (u[2] * Math.cos(a) + v[2] * Math.sin(a)) * r);
     }
+  });
+  // the hook, drawn along +x from its tip, with a little barb at the tip
+  const hook = points(nHook, (add, n) => {
+    tube(add, [[0.15, 0.25, 0], [0, 0, 0], [3.4, 0, 0]], 0.17, Math.round(n * 0.8));
+    tube(add, [[1.9, 0, 0], [3.4, 0, 0]], 0.26, n - Math.round(n * 0.8));
+  });
+
+  return {
+    name: "crochet",
+    seconds: 10,
+    view: 0.3,
+    spin: true,
+    update(t, pos, show) {
+      let o = 0;
+      // stitches appear as the hook reaches them
+      pos.set(st, 0);
+      for (let i = 0; i < nSt; i++, o++) show[o] = clamp01((t - when[i]) / 0.006);
+      // then the pompom puffs up
+      const p = clamp01((t - ROUNDS_END) / (1 - ROUNDS_END - 0.02)), ps = 0.2 + 0.8 * ease(p);
+      for (let i = 0; i < nPom; i++, o++) {
+        pos[o * 3] = pom[i * 3] * ps;
+        pos[o * 3 + 1] = POM_Y + pom[i * 3 + 1] * ps;
+        pos[o * 3 + 2] = pom[i * 3 + 2] * ps;
+        show[o] = clamp01(p * 3);
+      }
+      // the ball shrinks, staying on the same spot
+      const br = BALL_R * Math.cbrt(1 - 0.75 * clamp01(t / ROUNDS_END));
+      for (let i = 0; i < nBall; i++, o++) {
+        pos[o * 3] = BALL[0] + ball[i * 3] * br;
+        pos[o * 3 + 1] = BALL[1] - BALL_R + br + ball[i * 3 + 1] * br;
+        pos[o * 3 + 2] = BALL[2] + ball[i * 3 + 2] * br;
+        show[o] = 1;
+      }
+      // the hook: its tip at the stitch being made, the handle pointing out and up
+      const rf = Math.min(rows.length - 1e-3, clamp01(t / ROUNDS_END) * rows.length);
+      const row = rows[Math.floor(rf)], a = (rf % 1) * TAU;
+      const tip = [(row.r + 0.25) * Math.cos(a), row.y, (row.r + 0.25) * Math.sin(a)];
+      const dir = [Math.cos(a) * 0.5 - Math.sin(a) * 0.25, 0.83, Math.sin(a) * 0.5 + Math.cos(a) * 0.25];
+      const dl = Math.hypot(...dir);
+      const d = dir.map((v) => v / dl);
+      const [s, q] = frame(d);
+      const hookShow = 1 - clamp01((t - ROUNDS_END) / 0.03);
+      for (let i = 0; i < nHook; i++, o++) {
+        place(hook, i, tip, d, s, q, pos, o);
+        show[o] = hookShow;
+      }
+    },
   };
 }
-
-/* a chain of little loops along a path (the first row of crochet) */
-function chain(path: number[][]): Part[1] {
-  const P = smooth(path, 30);
-  const cum = [0];
-  for (let i = 1; i < P.length; i++) cum.push(cum[i - 1] + Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1], P[i][2] - P[i - 1][2]));
-  const total = cum[cum.length - 1], size = 1.1, count = Math.floor(total / size);
-  const at = (s: number) => {
-    let i = 1;
-    while (i < cum.length - 1 && cum[i] < s) i++;
-    const t = (s - cum[i - 1]) / (cum[i] - cum[i - 1] || 1);
-    const p = P[i - 1].map((v, k) => lerp(v, P[i][k], t));
-    const d = P[i].map((v, k) => v - P[i - 1][k]);
-    const l = Math.hypot(...d) || 1;
-    return { p, u: d.map((v) => v / l) };
-  };
-  return (add, n) => {
-    for (let k = 0; k < n; k++) {
-      const j = (Math.random() * count) | 0;
-      const { p, u } = at((j + 0.5) * size);
-      const [a, b] = frame(u);
-      const side = j % 2 ? a : b; // loops twist, one this way, the next that way
-      const ang = rand(0, TAU);
-      const c = Math.cos(ang) * size * 0.55, s = Math.sin(ang) * 0.32;
-      add(p[0] + u[0] * c + side[0] * s + gauss() * 0.05, p[1] + u[1] * c + side[1] * s + gauss() * 0.05, p[2] + u[2] * c + side[2] * s + gauss() * 0.05);
-    }
-  };
-}
-
-/* rows of V-shaped stitches, each a ring [y, r]; rib adds vertical ribbing (the brim) */
-function stitches(rings: number[][], rib = false): Part[1] {
-  const pick = picker(rings.map(([, r]) => r + 0.3));
-  return (add, n) => {
-    for (let k = 0; k < n; k++) {
-      const [y, r] = rings[pick()], a = rand(0, TAU);
-      const count = Math.max(6, Math.round((TAU * r) / 0.85));
-      const f = ((a / TAU) * count) % 1;
-      const dy = rib ? rand(-0.25, 0.25) : (Math.abs(f - 0.5) * 2 - 0.5) * 0.5;
-      const rr = r + (rib ? 0.22 * Math.cos(a * count) : 0.1 * Math.sin(f * Math.PI)) + gauss() * 0.04;
-      add(rr * Math.cos(a), y + dy, rr * Math.sin(a));
-    }
-  };
-}
-
-/* the beanie: crown rounds from the top, the body, the ribbed brim, a pompom */
-const BEANIE_R = 6.4, BEANIE_TOP = 7;
-const crown = (upTo: number) => {
-  const rows: number[][] = [];
-  for (let phi = 0.18; phi <= upTo; phi += 0.17) rows.push([BEANIE_TOP - 5.6 * (1 - Math.cos(phi)), BEANIE_R * Math.sin(phi)]);
-  return rows;
-};
-const body = (down: number) => {
-  const rows: number[][] = [];
-  for (let y = BEANIE_TOP - 5.6 - 0.7; y >= BEANIE_TOP - 5.6 - down; y -= 0.7) rows.push([y, BEANIE_R]);
-  return rows;
-};
-const brim = Array.from({ length: 4 }, (_, i) => [BEANIE_TOP - 5.6 - 5.4 - i * 0.6, BEANIE_R + 0.25]);
-const pompom: Part[1] = (add, n) => {
-  for (let k = 0; k < n; k++) {
-    const v = [gauss(), gauss(), gauss()], l = Math.hypot(...v), r = 1.9 * Math.pow(Math.random(), 0.25);
-    add((v[0] / l) * r, BEANIE_TOP + 1.6 + (v[1] / l) * r, (v[2] / l) * r);
-  }
-};
-
-const CROCHET: [number, Part[]][] = [
-  [0.9, [[0.85, yarnBall(0, 0, 0, 6)], [0.15, (add, n) => tube(add, smooth([[3.4, -4.6, 1.6], [5, -6.4, 1.6], [6.2, -6.6, 0.4], [6.4, -8.2, -0.6]], 20), 0.2, n)]]],
-  [0.6, [[0.7, yarnBall(-1.8, -3.8, 0, 4.6)], [0.3, chain([[2.2, -6, 1.6], [4.6, -5.4, 1.2], [6, -2.6, 0.4], [6, 0.8, -0.4], [4.6, 4, -1], [2, 5.8, -0.4]])]]],
-  [0.6, [[0.45, yarnBall(-2.8, -7, 0.6, 3.6)], [0.4, stitches(crown(0.9))], [0.15, chain([[0, -4.6, 1.6], [1.6, -1, 2.6], [2.6, 2.4, 3.6], [2.4, 4.6, 3.4]])]]],
-  [0.6, [[0.22, yarnBall(-3.4, -8.2, 2.4, 2.4)], [0.68, stitches([...crown(Math.PI / 2), ...body(2.8)])], [0.1, chain([[-1.8, -6.6, 3.4], [-0.6, -3.6, 5], [0.4, -2.2, 6.1]])]]],
-  [0.3, [[0.78, stitches([...crown(Math.PI / 2), ...body(5)])], [0.12, stitches(brim, true)], [0.1, pompom]]],
-];
 
 /* ------------------------------------------------------------------ painting */
 
-const CANVAS = { x0: -5, x1: 5, y0: -2.7, y1: 9.3, z: 0.35 };
-const easel: Part[1] = (add, n) => {
-  const legs = [
-    [[-3.8, 10.5, 0.9], [-6.2, -10.5, 2.4]],
-    [[3.8, 10.5, 0.9], [6.2, -10.5, 2.4]],
-    [[0, 10, -0.4], [0, -10.5, -5.6]],
-    [[-6, -3.15, 1.15], [6, -3.15, 1.15]], // the ledge the canvas stands on
-    [[-1.6, 9.7, 0.65], [1.6, 9.7, 0.65]], // the clamp at the top
-  ];
-  legs.forEach((l, i) => tube(add, l, i < 3 ? 0.28 : 0.36, Math.round(n / legs.length)));
-};
-const canvas: Part[1] = (add, n) => {
-  const { x0, x1, y0, y1, z } = CANVAS;
-  for (let k = 0; k < n; k++) {
-    const r = Math.random();
-    if (r < 0.74) add(rand(x0, x1), rand(y0, y1), z); // the face
-    else if (r < 0.9) {
-      // the sides
-      const t = rand(0, 2 * (x1 - x0 + y1 - y0)), zz = rand(-z, z);
-      if (t < x1 - x0) add(x0 + t, y0, zz);
-      else if (t < 2 * (x1 - x0)) add(x0 + t - (x1 - x0), y1, zz);
-      else if (t < 2 * (x1 - x0) + (y1 - y0)) add(x0, y0 + t - 2 * (x1 - x0), zz);
-      else add(x1, y0 + t - 2 * (x1 - x0) - (y1 - y0), zz);
-    } else add(rand(x0, x1), rand(y0, y1), -z); // the back
-  }
-};
-const PAINT_Z = CANVAS.z + 0.12;
-const FLOWER = [0, 5.2];
-const stemAndLeaves: Part[1] = (add, n) => {
-  tube(add, smooth([[0.3, -2.5, PAINT_Z], [-0.1, 0.5, PAINT_Z], [0.2, 2.6, PAINT_Z], [0, FLOWER[1] - 1, PAINT_Z]], 16), 0.17, Math.round(n * 0.34));
-  const leaf = (bx: number, by: number, tx: number, ty: number, m: number) => {
-    const dx = tx - bx, dy = ty - by, l = Math.hypot(dx, dy), px = -dy / l, py = dx / l;
-    for (let k = 0; k < m; k++) {
-      const u = Math.random(), w = 0.75 * Math.sin(Math.PI * u) * (Math.random() < 0.55 ? Math.sign(rand(-1, 1)) : rand(-1, 1));
-      add(bx + dx * u + px * w, by + dy * u + py * w + 0.25 * Math.sin(Math.PI * u), PAINT_Z + 0.05);
-    }
-  };
-  leaf(0, 0.4, -3, 1.9, Math.round(n * 0.33));
-  leaf(0.1, -1, 2.9, 0.1, n - Math.round(n * 0.34) - Math.round(n * 0.33));
-};
-const flowerCentre: Part[1] = (add, n) => {
-  // seeds in a sunflower spiral, domed
-  for (let k = 0; k < n; k++) {
-    const i = Math.random() * 600, r = 1.35 * Math.sqrt(i / 600), a = i * 2.39996;
-    add(FLOWER[0] + r * Math.cos(a) + gauss() * 0.04, FLOWER[1] + r * Math.sin(a) + gauss() * 0.04, PAINT_Z + 0.35 * (1 - (r / 1.35) ** 2));
-  }
-};
-const petals = (count: number, of = 13): Part[1] => (add, n) => {
-  for (let k = 0; k < n; k++) {
-    const j = k % count, th = (j / of) * TAU + 1.2;
-    const u = Math.random(), r = 1.45 + u * 2.1, w = 0.55 * Math.pow(Math.sin(Math.PI * u), 0.7);
-    const s = Math.random() < 0.45 ? Math.sign(rand(-1, 1)) : rand(-1, 1);
-    add(FLOWER[0] + Math.cos(th) * r - Math.sin(th) * w * s, FLOWER[1] + Math.sin(th) * r + Math.cos(th) * w * s, PAINT_Z + 0.12 * Math.sin(Math.PI * u));
-  }
-};
+function painting(N: number): Build {
+  const CANVAS = { x0: -5, x1: 5, y0: -2.7, y1: 9.3, z: 0.35 };
+  const PAINT_Z = CANVAS.z + 0.12, FLOWER = [0, 5.2];
+  const nEasel = Math.round(N * 0.2), nCanvas = Math.round(N * 0.34), nBrush = Math.round(N * 0.04);
+  const nPaint = N - nEasel - nCanvas - nBrush;
 
-const PAINTING: [number, Part[]][] = [
-  [0.5, [[0.22, easel], [0.78, canvas]]],
-  [0.5, [[0.22, easel], [0.6, canvas], [0.18, stemAndLeaves]]],
-  [0.5, [[0.22, easel], [0.48, canvas], [0.15, stemAndLeaves], [0.15, flowerCentre]]],
-  [0.5, [[0.22, easel], [0.4, canvas], [0.12, stemAndLeaves], [0.12, flowerCentre], [0.14, petals(6)]]],
-  [0.1, [[0.2, easel], [0.3, canvas], [0.12, stemAndLeaves], [0.14, flowerCentre], [0.24, petals(13)]]],
-];
+  const easel = points(nEasel, (add, n) => {
+    const legs = [
+      [[-3.8, 10.5, 0.9], [-6.2, -10.5, 2.4]],
+      [[3.8, 10.5, 0.9], [6.2, -10.5, 2.4]],
+      [[0, 10, -0.4], [0, -10.5, -5.6]],
+      [[-6, -3.15, 1.15], [6, -3.15, 1.15]], // the ledge the canvas stands on
+      [[-1.6, 9.7, 0.65], [1.6, 9.7, 0.65]], // the clamp at the top
+    ];
+    legs.forEach((l, i) => tube(add, l, i < 3 ? 0.28 : 0.36, Math.round(n / legs.length)));
+  });
+  const canvas = points(nCanvas, (add, n) => {
+    const { x0, x1, y0, y1, z } = CANVAS;
+    for (let k = 0; k < n; k++) {
+      const r = Math.random();
+      if (r < 0.74) add(rand(x0, x1), rand(y0, y1), z);
+      else if (r < 0.9) {
+        const edge = (Math.random() * 4) | 0, zz = rand(-z, z);
+        if (edge === 0) add(rand(x0, x1), y0, zz);
+        else if (edge === 1) add(rand(x0, x1), y1, zz);
+        else if (edge === 2) add(x0, rand(y0, y1), zz);
+        else add(x1, rand(y0, y1), zz);
+      } else add(rand(x0, x1), rand(y0, y1), -z);
+    }
+  });
+
+  /* the strokes, in the order they are painted; at(u) gives a point u of the way along */
+  const strokes: { share: number; from: number; to: number; at: (u: number) => number[] }[] = [];
+  const stem = smooth([[0.3, -2.5], [-0.1, 0.5], [0.2, 2.6], [0, FLOWER[1] - 1]], 16);
+  strokes.push({ share: 0.12, from: 0, to: 0.14, at: (u) => {
+    const f = u * (stem.length - 1), i = Math.min(stem.length - 2, Math.floor(f)), g = f - i, a = rand(0, TAU);
+    return [lerp(stem[i][0], stem[i + 1][0], g) + Math.cos(a) * 0.17, lerp(stem[i][1], stem[i + 1][1], g), PAINT_Z + Math.sin(a) * 0.05];
+  } });
+  const leaf = (bx: number, by: number, tx: number, ty: number) => (u: number) => {
+    const dx = tx - bx, dy = ty - by, l = Math.hypot(dx, dy), w = 0.75 * Math.sin(Math.PI * u) * rand(-1, 1);
+    return [bx + dx * u - (dy / l) * w, by + dy * u + (dx / l) * w + 0.25 * Math.sin(Math.PI * u), PAINT_Z + 0.05];
+  };
+  strokes.push({ share: 0.1, from: 0.15, to: 0.24, at: leaf(0, 0.4, -3, 1.9) });
+  strokes.push({ share: 0.1, from: 0.25, to: 0.34, at: leaf(0.1, -1, 2.9, 0.1) });
+  strokes.push({ share: 0.2, from: 0.36, to: 0.52, at: (u) => {
+    // the centre, dabbed in a sunflower spiral from the middle out, domed
+    const i = u * 600, r = 1.35 * Math.sqrt(i / 600), a = i * 2.39996;
+    return [FLOWER[0] + r * Math.cos(a), FLOWER[1] + r * Math.sin(a), PAINT_Z + 0.35 * (1 - (r / 1.35) ** 2)];
+  } });
+  for (let j = 0; j < 13; j++) {
+    const th = (j / 13) * TAU + 1.2, from = 0.54 + j * 0.034;
+    strokes.push({ share: 0.48 / 13, from, to: from + 0.03, at: (u) => {
+      const r = 1.45 + u * 2.1, w = 0.55 * Math.pow(Math.sin(Math.PI * u), 0.7) * rand(-1, 1);
+      return [FLOWER[0] + Math.cos(th) * r - Math.sin(th) * w, FLOWER[1] + Math.sin(th) * r + Math.cos(th) * w, PAINT_Z + 0.12 * Math.sin(Math.PI * u)];
+    } });
+  }
+  // every paint dot: where it lands and when; sorted by when, so the brush can follow
+  const paint: { p: number[]; when: number }[] = [];
+  const total = strokes.reduce((s, k) => s + k.share, 0);
+  strokes.forEach((k) => {
+    const n = Math.round((nPaint * k.share) / total);
+    for (let i = 0; i < n; i++) {
+      const u = Math.random();
+      paint.push({ p: k.at(u), when: lerp(k.from, k.to, u) });
+    }
+  });
+  while (paint.length < nPaint) paint.push(paint[(Math.random() * paint.length) | 0]);
+  paint.length = nPaint;
+  paint.sort((a, b) => a.when - b.when);
+  const paintPos = new Float32Array(paint.flatMap((d) => d.p));
+  const paintWhen = paint.map((d) => d.when);
+
+  // the brush, drawn along +x from its tip: bristles, a ferrule and a long handle
+  const BD = [0.42, 0.5, 0.76].map((v, _, a) => v / Math.hypot(...a));
+  const [bs, bq] = frame(BD);
+  const brush = points(nBrush, (add, n) => {
+    for (let k = 0; k < n; k++) {
+      const x = Math.random() * 7, a = rand(0, TAU);
+      const r = x < 1.1 ? 0.12 + 0.28 * (x / 1.1) : x < 1.8 ? 0.36 : 0.24 - 0.1 * ((x - 1.8) / 5.2);
+      add(x, Math.cos(a) * r, Math.sin(a) * r);
+    }
+  });
+  const REST = [4.4, -2.75, 1.6]; // the brush ends up laid on the ledge
+
+  return {
+    name: "painting",
+    seconds: 10,
+    view: 0.1,
+    spin: false,
+    update(t, pos, show) {
+      pos.set(easel, 0);
+      pos.set(canvas, nEasel * 3);
+      let o = nEasel + nCanvas;
+      show.fill(1, 0, o);
+      // paint appears right where the brush is
+      let head = 0;
+      for (let i = 0; i < nPaint; i++, o++) {
+        pos.set(paintPos.subarray(i * 3, i * 3 + 3), o * 3);
+        const v = clamp01((t - paintWhen[i]) / 0.004);
+        show[o] = v;
+        if (v > 0) head = i;
+      }
+      // the brush tip sits on the newest paint; when the painting is done it goes to the ledge
+      const done = ease(clamp01((t - 0.97) / 0.03));
+      const lift = t < paintWhen[0] ? 0.8 : 0.1;
+      const tip = [
+        lerp(paintPos[head * 3], REST[0], done),
+        lerp(paintPos[head * 3 + 1], REST[1], done),
+        lerp(paintPos[head * 3 + 2] + lift, REST[2], done),
+      ];
+      for (let i = 0; i < nBrush; i++, o++) {
+        place(brush, i, tip, BD, bs, bq, pos, o);
+        show[o] = 1;
+      }
+    },
+  };
+}
 
 /* ------------------------------------------------------------------ sewing */
 
-/* pattern pieces, drawn flat (u across, v down) */
-const BODICE = "M -2.3 -3.2 L -1 -3.4 Q 0 -2.3 1 -3.4 L 2.3 -3.2 Q 2 -1.6 2.9 -0.6 L 2.5 3.2 L -2.5 3.2 L -2.9 -0.6 Q -2 -1.6 -2.3 -3.2 Z";
-const SKIRT = "M -1.9 -3.6 L 1.9 -3.6 L 3.9 3.4 Q 0 4.3 -3.9 3.4 Z";
-const pieces = (spread: number, lift: number): Part[1] => (add, n) => {
-  const b = shape(BODICE, [-3, 3, -3.5, 3.3]), s = shape(SKIRT, [-4, 4, -3.7, 4.3]);
-  const nb = Math.round(n * 0.45);
-  b.fill(Math.round(nb * 0.7), (u, v) => add(u - spread, lift, v));
-  b.edge(nb - Math.round(nb * 0.7), (u, v) => add(u - spread, lift + 0.05, v));
-  const ns = n - nb;
-  s.fill(Math.round(ns * 0.7), (u, v) => add(u + spread, lift, v));
-  s.edge(ns - Math.round(ns * 0.7), (u, v) => add(u + spread, lift + 0.05, v));
-};
-const folded: Part[1] = (add, n) => {
-  // three layers of cloth folded on the table, the folds rounded on alternate sides
-  for (let k = 0; k < n; k++) {
-    const r = Math.random();
-    if (r < 0.8) {
-      const layer = (Math.random() * 4) | 0, x = rand(-5.5, 5.5), z = rand(-3.6, 3.6);
-      add(x, layer * 0.55 + 0.06 * Math.sin(x * 1.3 + z), z);
-    } else {
-      const fold = (Math.random() * 3) | 0, side = fold % 2 ? -1 : 1, b = rand(-Math.PI / 2, Math.PI / 2);
-      add(side * (5.5 + 0.275 * Math.cos(b)), fold * 0.55 + 0.275 + 0.275 * Math.sin(b), rand(-3.6, 3.6));
+function sewing(N: number): Build {
+  const TORSO = [[7.4, 1.4, 1.2], [7, 3.4, 2], [6.2, 3.9, 2.4], [4, 3.7, 2.7], [1, 2.8, 2.1], [-1.5, 3.7, 2.7], [-3, 3.6, 2.6], [-3.2, 0.01, 0.01]];
+  const nForm = Math.round(N * 0.3), nNeedle = Math.round(N * 0.02), nDress = N - nForm - nNeedle;
+  const form = points(nForm, (add, n) => {
+    const nNeck = Math.round(n * 0.18), nTorso = Math.round(n * 0.52), nPole = Math.round(n * 0.12);
+    lathe(add, [[9.6, 0, 0], [9.6, 1.1, 1.1], [9.3, 1.3, 1.3], [8.7, 1, 1], [7.4, 1, 1]], nNeck);
+    lathe(add, TORSO, nTorso);
+    tube(add, [[0, -3.2, 0], [0, -10, 0]], 0.3, nPole);
+    const rest = n - nNeck - nTorso - nPole;
+    for (let i = 0; i < 3; i++) {
+      const a = (i / 3) * TAU + 0.5;
+      tube(add, [[0, -9.8, 0], [4.6 * Math.cos(a), -10.6, 4.6 * Math.sin(a)]], 0.26, Math.round(rest / 3));
     }
-  }
-};
-const spread: Part[1] = (add, n) => {
-  const sheet = Math.round(n * 0.72);
-  for (let k = 0; k < sheet; k++) {
-    const x = rand(-8.6, 8.6), z = rand(-5.2, 5.2);
-    add(x, 0.25 * Math.sin(x * 0.6) * Math.cos(z * 0.5), z);
-  }
-  // the pattern traced on top, dashed
-  const b = shape(BODICE, [-3, 3, -3.5, 3.3]), s = shape(SKIRT, [-4, 4, -3.7, 4.3]);
-  const rest = n - sheet;
-  b.edge(Math.round(rest * 0.45), (u, v) => add(u - 4.4, 0.3, v), true);
-  s.edge(rest - Math.round(rest * 0.45), (u, v) => add(u + 3.6, 0.3, v), true);
-};
+  });
 
-/* the dress form's torso, an oval in plan: [y, half width, half depth] */
-const bodice = [[6.3, 3.95, 2.5], [5.2, 3.95, 2.75], [4, 3.85, 2.85], [2.4, 3.3, 2.5], [1, 2.95, 2.25]];
-const dress = (add: Add, n: number) => {
-  const nb = Math.round(n * 0.27), ns = Math.round(n * 0.56), nh = Math.round(n * 0.07), nw = Math.round(n * 0.04);
-  lathe(add, bodice, nb);
-  for (let k = 0; k < ns; k++) {
-    // the skirt flares from the waist into soft folds
-    const u = Math.sqrt(Math.random()), a = rand(0, TAU);
-    const fold = 1 + 0.08 * Math.sin(9 * a) * u;
-    add((2.95 + 3.6 * u ** 1.2) * fold * Math.cos(a), 1 - 8.4 * u, (2.25 + 3.2 * u ** 1.2) * fold * Math.sin(a));
-  }
-  for (let k = 0; k < nh; k++) {
-    const a = rand(0, TAU), fold = 1 + 0.08 * Math.sin(9 * a);
-    add(6.55 * fold * Math.cos(a), -7.4 + gauss() * 0.06, 5.45 * fold * Math.sin(a));
-  }
-  for (let k = 0; k < nw; k++) {
-    const a = rand(0, TAU);
-    add(3.0 * Math.cos(a), 1 + gauss() * 0.05, 2.3 * Math.sin(a));
-  }
-  const rest = n - nb - ns - nh - nw;
-  for (const s of [-1, 1]) tube(add, smooth([[s * 2.3, 6.2, 2.1], [s * 2.7, 7.3, 0.4], [s * 2.6, 7.2, -1.2], [s * 2.3, 6.2, -2.1]], 10), 0.22, Math.round(rest / 2));
-};
-const form: Part[1] = (add, n) => {
-  const q = Math.round(n / 4);
-  lathe(add, [[9.6, 0], [9.6, 1.1], [9.3, 1.3], [8.7, 1], [7.4, 1], [7.1, 2.6, 1.6], [6.4, 3.85, 2.4]].map((p) => (p.length === 2 ? [p[0], p[1], p[1]] : p)), q);
-  tube(add, [[0, -7.4, 0], [0, -10, 0]], 0.3, q);
-  for (let i = 0; i < 3; i++) {
-    const a = (i / 3) * TAU + 0.5;
-    tube(add, [[0, -9.8, 0], [4.6 * Math.cos(a), -10.6, 4.6 * Math.sin(a)]], 0.26, Math.round((n - 2 * q) / 3));
-  }
-};
+  const TOP = 7.4, HEM = -7.4; // the dress is sewn from the shoulders down to the hem
+  const dress = points(nDress, (add, n) => {
+    const nb = Math.round(n * 0.27), ns = Math.round(n * 0.58), nh = Math.round(n * 0.07);
+    lathe(add, [[6.3, 3.95, 2.5], [5.2, 3.95, 2.75], [4, 3.85, 2.85], [2.4, 3.3, 2.5], [1, 2.95, 2.25]], nb);
+    for (let k = 0; k < ns; k++) {
+      // the skirt flares from the waist into soft folds
+      const u = Math.sqrt(Math.random()), a = rand(0, TAU), fold = 1 + 0.08 * Math.sin(9 * a) * u;
+      add((2.95 + 3.6 * u ** 1.2) * fold * Math.cos(a), 1 - 8.4 * u, (2.25 + 3.2 * u ** 1.2) * fold * Math.sin(a));
+    }
+    for (let k = 0; k < nh; k++) {
+      const a = rand(0, TAU), fold = 1 + 0.08 * Math.sin(9 * a);
+      add(6.55 * fold * Math.cos(a), HEM + gauss() * 0.06, 5.45 * fold * Math.sin(a));
+    }
+    const rest = n - nb - ns - nh;
+    for (const s of [-1, 1]) tube(add, smooth([[s * 2.3, 6.2, 2.1], [s * 2.7, 7.3, 0.4], [s * 2.6, 7.2, -1.2], [s * 2.3, 6.2, -2.1]], 10), 0.22, Math.round(rest / 2));
+  });
+  const needle = points(nNeedle, (add, n) => tube(add, [[0, 0, 0], [0, 1.8, 0]], 0.07, n));
 
-const SEWING: [number, Part[]][] = [
-  [0.5, [[1, folded]]],
-  [0.6, [[1, spread]]],
-  [0.6, [[1, pieces(4.6, 0.6)]]],
-  [0.4, [[1, dress]]],
-  [0.3, [[0.66, dress], [0.34, form]]],
-];
+  return {
+    name: "sewing",
+    seconds: 9,
+    view: 0.22,
+    spin: true,
+    update(t, pos, show) {
+      // the sewing line moves down; fabric appears above it and covers the form
+      const line = lerp(TOP + 0.3, HEM - 0.3, ease(t));
+      pos.set(form, 0);
+      let o = 0;
+      for (let i = 0; i < nForm; i++, o++) {
+        const y = form[i * 3 + 1];
+        show[o] = y < 6.4 && y > -3.25 && y > line ? 0 : 1; // the torso hides once covered
+      }
+      for (let i = 0; i < nDress; i++, o++) {
+        const k = i * 3, y = dress[k + 1], v = clamp01((y - line) / 0.5);
+        const out = 1 + 0.12 * (1 - v); // fresh fabric settles in from a little further out
+        pos[o * 3] = dress[k] * out;
+        pos[o * 3 + 1] = y;
+        pos[o * 3 + 2] = dress[k + 2] * out;
+        show[o] = v;
+      }
+      // the needle stitches round and round along the sewing line
+      const a = t * TAU * 7, r = (line > 1 ? 4.1 : 3.1 + 3.6 * clamp01((1 - line) / 8.4)) + 0.3;
+      const at = [r * Math.cos(a), line - 0.3 + Math.sin(t * 90) * 0.35, r * Math.sin(a)];
+      const needleShow = 1 - clamp01((t - 0.97) / 0.03);
+      for (let i = 0; i < nNeedle; i++, o++) {
+        pos[o * 3] = at[0] + needle[i * 3];
+        pos[o * 3 + 1] = at[1] + needle[i * 3 + 1];
+        pos[o * 3 + 2] = at[2] + needle[i * 3 + 2];
+        show[o] = needleShow;
+      }
+    },
+  };
+}
 
 /* ------------------------------------------------------------------ rug tufting */
 
-/* the frame stands up (x, y, facing +z); the design sits on the cloth */
-const DES = { w: 4.8, h: 5.6 };
-const pile = (x: number, y: number) => {
-  const d = Math.hypot(x, y);
-  const ring = Math.exp(-(((d - 3.2) / 0.5) ** 2));
-  const centre = Math.exp(-((d / 0.9) ** 2));
-  const border = Math.max(0, 1 - Math.min(DES.w - Math.abs(x), DES.h - Math.abs(y)) / 0.6);
-  return 0.35 + 0.9 * ring + 0.7 * centre + 0.5 * border;
-};
-const tuftFrame: Part[1] = (add, n) => {
-  const X = 6.4, Y = 7.2, m = Math.round(n * 0.78);
-  tube(add, [[-X, -Y, 0], [X, -Y, 0], [X, Y, 0], [-X, Y, 0], [-X, -Y, 0]], 0.5, m);
-  for (const s of [-1, 1]) tube(add, [[s * X, -Y - 0.4, -2.6], [s * X, -Y - 0.4, 2.6]], 0.42, Math.round((n - m) / 2));
-};
-const cloth: Part[1] = (add, n) => {
-  for (let k = 0; k < n; k++) add(rand(-6, 6), rand(-6.8, 6.8), 0);
-};
-const drawnDesign: Part[1] = (add, n) => {
-  for (let k = 0; k < n; k++) {
-    const r = Math.random(), a = rand(0, TAU);
-    if (r < 0.7) {
-      const d = Math.random() < 0.5 ? 2.7 : 3.7;
-      add(d * Math.cos(a), d * Math.sin(a), 0.03);
-    } else if (r < 0.82) add(Math.cos(a), Math.sin(a), 0.03);
-    else {
-      const t = rand(0, 2 * (DES.w + DES.h)) * 2;
-      const per = 2 * (2 * DES.w + 2 * DES.h);
-      const s = t % per;
-      if (s < 2 * DES.w) add(-DES.w + s, DES.h, 0.03);
-      else if (s < 4 * DES.w) add(-DES.w + s - 2 * DES.w, -DES.h, 0.03);
-      else if (s < 4 * DES.w + 2 * DES.h) add(-DES.w, -DES.h + s - 4 * DES.w, 0.03);
-      else add(DES.w, -DES.h + s - 4 * DES.w - 2 * DES.h, 0.03);
-    }
-  }
-};
-/* tufts poke out of the front of the cloth as fuzzy loops */
-const ringTufts = (sweep: number): Part[1] => (add, n) => {
-  for (let k = 0; k < n; k++) {
-    const a = Math.PI / 2 - Math.random() * sweep, d = 3.2 + rand(-0.55, 0.55);
-    add(d * Math.cos(a), d * Math.sin(a), 1.2 * Math.pow(Math.random(), 0.6));
-  }
-};
-const centreTufts: Part[1] = (add, n) => {
-  for (let k = 0; k < n; k++) {
-    const a = rand(0, TAU), d = 1.05 * Math.sqrt(Math.random());
-    add(d * Math.cos(a), d * Math.sin(a), 1.0 * Math.pow(Math.random(), 0.6));
-  }
-};
-const allTufts: Part[1] = (add, n) => {
-  // denser where the pile is high, so the ring still reads face on
-  for (let k = 0; k < n; k++) {
+function rugTufting(N: number): Build {
+  const W = 4.8, H = 5.6; // the design's half width and half height, on the cloth
+  const pile = (x: number, y: number) => {
+    const d = Math.hypot(x, y);
+    const ring = Math.exp(-(((d - 3.2) / 0.5) ** 2));
+    const centre = Math.exp(-((d / 0.9) ** 2));
+    const border = Math.max(0, 1 - Math.min(W - Math.abs(x), H - Math.abs(y)) / 0.6);
+    return 0.35 + 0.9 * ring + 0.7 * centre + 0.5 * border;
+  };
+  const nFrame = Math.round(N * 0.14), nCloth = Math.round(N * 0.2), nGun = Math.round(N * 0.04);
+  const nTuft = N - nFrame - nCloth - nGun;
+
+  const frameDots = points(nFrame, (add, n) => {
+    const X = 6.4, Y = 7.2, m = Math.round(n * 0.78);
+    tube(add, [[-X, -Y, 0], [X, -Y, 0], [X, Y, 0], [-X, Y, 0], [-X, -Y, 0]], 0.5, m);
+    for (const s of [-1, 1]) tube(add, [[s * X, -Y - 0.4, -2.6], [s * X, -Y - 0.4, 2.6]], 0.42, Math.round((n - m) / 2));
+  });
+  const cloth = points(nCloth, (add, n) => {
+    for (let k = 0; k < n; k++) add(rand(-6, 6), rand(-6.8, 6.8), 0);
+  });
+  // tufts, denser where the pile is high; filled row by row from the top, back and forth
+  const ROWS = 24, END = 0.97;
+  const tufts = new Float32Array(nTuft * 3), when = new Float32Array(nTuft);
+  for (let i = 0; i < nTuft; i++) {
     let x = 0, y = 0;
     for (let tries = 0; tries < 6; tries++) {
-      x = rand(-DES.w, DES.w);
-      y = rand(-DES.h, DES.h);
-      if (Math.random() < (pile(x, y) / 1.4) ** 2) break;
-    }
-    add(x, y, pile(x, y) * (0.7 + 0.3 * Math.random()));
-  }
-};
-const finishedRug: Part[1] = (add, n) => {
-  // off the frame, lying flat (pile up), with fringe at both ends
-  const W = 5.4, H = 6.6, put = (x: number, y: number, z: number) => add(x, z, -y);
-  const top = Math.round(n * 0.66), back = Math.round(n * 0.08);
-  for (let k = 0; k < top; k++) {
-    let x = 0, y = 0;
-    for (let tries = 0; tries < 4; tries++) {
       x = rand(-W, W);
       y = rand(-H, H);
-      if (Math.random() < pile((x * DES.w) / W, (y * DES.h) / H) / 1.4) break;
+      if (Math.random() < (pile(x, y) / 1.4) ** 2) break;
     }
-    put(x, y, pile((x * DES.w) / W, (y * DES.h) / H) + gauss() * 0.06);
+    tufts.set([x, y, pile(x, y) * (0.7 + 0.3 * Math.random())], i * 3);
+    const row = Math.min(ROWS - 1, Math.floor(((H - y) / (2 * H)) * ROWS));
+    const across = (x + W) / (2 * W);
+    when[i] = ((row + (row % 2 ? 1 - across : across)) / ROWS) * END;
   }
-  for (let k = 0; k < back; k++) put(rand(-W, W), rand(-H, H), 0);
-  const strands = 9;
-  for (let k = 0; k < n - top - back; k++) {
-    const i = k % (strands * 2), end = i < strands ? 1 : -1, xi = -W + 0.6 + ((i % strands) / (strands - 1)) * (2 * W - 1.2);
-    const t = Math.random();
-    put(xi + Math.sin(t * 3 + xi) * 0.3 + gauss() * 0.06, end * (H + t * 2.6), 0.15 - t * t * 0.6 + gauss() * 0.06);
-  }
-};
-
-const RUG: [number, Part[]][] = [
-  [0.5, [[0.3, tuftFrame], [0.58, cloth], [0.12, drawnDesign]]],
-  [0.4, [[0.28, tuftFrame], [0.45, cloth], [0.27, ringTufts(Math.PI * 1.1)]]],
-  [0.4, [[0.26, tuftFrame], [0.34, cloth], [0.32, ringTufts(TAU)], [0.08, centreTufts]]],
-  [0.5, [[0.25, tuftFrame], [0.75, allTufts]]],
-  [0.3, [[1, finishedRug]]],
-];
-
-/* ------------------------------------------------------------------ the journeys */
-
-const JOURNEYS: { stages: [number, Part[]][]; views: number[]; spin: boolean[] }[] = [
-  { stages: POTTERY, views: [0.5, 0.42, 0.55, 0.38, 0.3], spin: [true, true, true, true, true] },
-  { stages: CROCHET, views: [0.28, 0.28, 0.3, 0.3, 0.28], spin: [true, true, true, true, true] },
-  { stages: PAINTING, views: [0.1, 0.1, 0.1, 0.1, 0.1], spin: [false, false, false, false, false] },
-  { stages: SEWING, views: [0.75, 0.85, 0.85, 0.25, 0.22], spin: [true, true, true, true, true] },
-  { stages: RUG, views: [0.12, 0.12, 0.12, 0.12, 0.85], spin: [false, false, false, false, true] },
-];
-const LAST_HOLD = 2.6; // the finished piece stays a little longer
-
-/* Build every stage of every journey with exactly n dots each. Needs the DOM (for the
-   flat pattern shapes). Each journey is centred on its height range across all stages. */
-export function buildJourneys(n: number): Stage[] {
-  svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.style.cssText = "position:absolute;width:0;height:0;overflow:hidden";
-  document.body.appendChild(svg);
-  const out: Stage[] = [];
-  JOURNEYS.forEach((j, hobby) => {
-    const all = j.stages.map(([, parts]) => compose(n, parts));
-    let lo = Infinity, hi = -Infinity;
-    for (const pts of all) for (const p of pts) {
-      lo = Math.min(lo, p[1]);
-      hi = Math.max(hi, p[1]);
-    }
-    const mid = (lo + hi) / 2;
-    all.forEach((pts, i) => {
-      pts.sort((a, b) => a[1] - b[1]);
-      const points = new Float32Array(n * 3);
-      pts.forEach((p, k) => points.set([p[0], p[1] - mid, p[2]], k * 3));
-      const last = i === all.length - 1;
-      out.push({ hobby, view: j.views[i], spin: j.spin[i], hold: last ? LAST_HOLD : j.stages[i][0], points });
-    });
+  // the tufting gun, behind the cloth (the tufts come out the front)
+  const gun = points(nGun, (add, n) => {
+    tube(add, [[0, 0, -0.2], [0, 0, -1.4]], 0.18, Math.round(n * 0.25));
+    tube(add, [[0, 0, -1.4], [0, 0.2, -4.2]], 0.55, Math.round(n * 0.5));
+    tube(add, [[0, 0, -3.2], [0, -2, -3.8]], 0.32, n - Math.round(n * 0.75));
   });
-  svg.remove();
-  svg = null;
-  return out;
+
+  return {
+    name: "rug tufting",
+    seconds: 10,
+    view: 0.14,
+    spin: false,
+    update(t, pos, show) {
+      pos.set(frameDots, 0);
+      pos.set(cloth, nFrame * 3);
+      let o = nFrame + nCloth;
+      show.fill(1, 0, o);
+      // each tuft pops out of the cloth as the gun passes
+      for (let i = 0; i < nTuft; i++, o++) {
+        const k = i * 3, v = clamp01((t - when[i]) / 0.01);
+        pos[o * 3] = tufts[k];
+        pos[o * 3 + 1] = tufts[k + 1];
+        pos[o * 3 + 2] = tufts[k + 2] * (0.3 + 0.7 * ease(v));
+        show[o] = v > 0 ? 1 : 0;
+      }
+      const f = clamp01(t / END) * ROWS, row = Math.min(ROWS - 1, Math.floor(f)), across = Math.min(1, f - row);
+      const gx = lerp(-W, W, row % 2 ? 1 - across : across), gy = H - ((row + 0.5) / ROWS) * 2 * H;
+      const gunShow = 1 - clamp01((t - END) / 0.03);
+      for (let i = 0; i < nGun; i++, o++) {
+        pos[o * 3] = gx + gun[i * 3];
+        pos[o * 3 + 1] = gy + gun[i * 3 + 1];
+        pos[o * 3 + 2] = gun[i * 3 + 2];
+        show[o] = gunShow;
+      }
+    },
+  };
+}
+
+export const NAMES = ["pottery", "crochet", "painting", "sewing", "rug tufting"];
+
+/* every hobby's build, each with exactly n dots */
+export function buildHobbies(n: number): Build[] {
+  return [pottery(n), crochet(n), painting(n), sewing(n), rugTufting(n)];
 }
