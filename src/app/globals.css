@@ -20,15 +20,24 @@
   /* --cell-w / --cell-h: set by Grid.tsx so the net always fills the screen exactly */
   --cell-w: 240px;
   --cell-h: 360px;
-  --pad: 20px; /* the space inside every rectangle */
+  --ui: 1; /* set by Grid.tsx: grows the type with the rectangles on big screens (1 → 1.5) */
+  --pad: calc(20px * var(--ui)); /* the space inside every rectangle */
 }
 
-/* the page is exactly the screen: no scrolling */
+/* the page is exactly the screen: no scrolling (except on screens too small for the
+   whole board, where the net scrolls and its lines scroll with it) */
 html,
 body {
   height: 100%;
   overflow: hidden;
 }
+html.net-scroll,
+html.net-scroll body {
+  height: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+html.net-scroll body { background-attachment: scroll; }
 
 body {
   background-color: var(--paper);
@@ -46,10 +55,18 @@ body {
    title    22  names of things, the contact line
    body     15  the one-liners
    label    12  numbers, small headings, tags */
-.t-figure { font-size: 40px; line-height: 1; letter-spacing: -0.02em; }
-.t-title { font-size: 22px; line-height: 1.15; letter-spacing: -0.01em; }
-.t-body { font-size: 15px; line-height: 1.35; }
-.t-label { font-size: 12px; line-height: 1.3; letter-spacing: 0.01em; }
+.t-figure { font-size: calc(40px * var(--ui)); line-height: 1; letter-spacing: -0.02em; }
+.t-title { font-size: calc(22px * var(--ui)); line-height: 1.15; letter-spacing: -0.01em; }
+/* body text and labels use Fraunces' reading cut: regular weight, optical size for text,
+   soft, so they read easily and still feel like the titles */
+.t-text, .t-body, .t-label {
+  font-family: var(--font-text), Georgia, serif;
+  font-weight: 400;
+  font-optical-sizing: auto;
+  font-variation-settings: "SOFT" 60;
+}
+.t-body { font-size: calc(15.5px * var(--ui)); line-height: 1.45; }
+.t-label { font-size: calc(12.5px * var(--ui)); line-height: 1.35; letter-spacing: 0.01em; }
 .t-title, .t-body { text-wrap: balance; }
 
 /* ------------------------------------------------------------------ rectangles */
@@ -82,6 +99,131 @@ body {
 .tile-foot > * { margin: 0; }
 .tile-foot > * + * { margin-top: 6px; }
 .tile-label { display: flex; gap: 0.4rem; opacity: 0.85; }
+
+/* ------------------------------------------------------------------ case studies
+   Linear's way, made light: a pale panel, one real piece of product UI floating in the
+   middle with its edges fading out, plain sans for the UI, 1px borders, soft shadows and
+   the work blue only for the one action. The name and one grey line bottom left. */
+.lin-tile {
+  /* ONE blue for everything in the case studies: words, UI, buttons and the background
+     (on the light cloud-sky blue from the sunflower photo). Lighter steps are that blue mixed with white. */
+  --cb: var(--ink); /* the name's blue, the same as all the text on the site */
+  --cb-soft: color-mix(in srgb, var(--cb) 78%, white);
+  --cb-faint: color-mix(in srgb, var(--cb) 45%, white);
+  --cb-wash: color-mix(in srgb, var(--cb) 12%, white);
+  --lin-ink: var(--cb);
+  --lin-grey: var(--cb-soft);
+  --lin-line: color-mix(in srgb, var(--cb) 20%, white);
+  position: relative;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  /* the light sky beside the clouds in the sunflower photo, flat */
+  background: #b0c7e8;
+  color: var(--lin-ink);
+  cursor: default;
+  outline: none;
+}
+/* a quiet, zoomed-out net behind the UI for a bit of texture: thin see-through lines that
+   fade out toward the edges */
+.lin-tile::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, rgb(255 255 255 / 0.4) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.4) 1px, transparent 1px);
+  background-size: 56px 56px;
+  background-position: -1px -1px;
+  -webkit-mask-image: radial-gradient(80% 75% at 50% 40%, #000 30%, transparent 100%);
+  mask-image: radial-gradient(80% 75% at 50% 40%, #000 30%, transparent 100%);
+}
+.lin-tile:focus-visible { box-shadow: inset 0 0 0 2px var(--cb); }
+
+.lin-stage {
+  position: relative;
+  min-height: 0;
+  /* the UI runs off the edges and fades out, right and bottom most */
+  --fade-x: linear-gradient(to right, transparent, #000 5%, #000 84%, transparent);
+  --fade-y: linear-gradient(to bottom, transparent, #000 7%, #000 74%, transparent);
+  -webkit-mask-image: var(--fade-x), var(--fade-y);
+  -webkit-mask-composite: source-in;
+  mask-image: var(--fade-x), var(--fade-y);
+  mask-composite: intersect;
+}
+.lin-board { position: absolute; left: 50%; top: 50%; transform-origin: 50% 50%; }
+.lin-abs { position: absolute; }
+.lin-hidden { opacity: 0; visibility: hidden; }
+
+.lin-serif { font-family: var(--font-flower), Georgia, serif; font-weight: 600; letter-spacing: -0.01em; }
+.lin-ui { font-family: var(--font-ui), system-ui, sans-serif; color: var(--lin-ink); }
+.lin-card {
+  background: #fff;
+  border: 1px solid var(--lin-line);
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgb(38 74 135 / 0.06), 0 14px 32px -10px rgb(38 74 135 / 0.22);
+}
+.lin-btn {
+  padding: 5px 12px;
+  border-radius: 7px;
+  background: var(--cb);
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+.lin-send {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 22px;
+  border-radius: 6px;
+  background: var(--cb);
+  color: #fff;
+}
+.lin-chip {
+  padding: 1px 7px;
+  border: 1px solid var(--lin-line);
+  border-radius: 999px;
+  font-size: 10.5px;
+  color: var(--lin-ink);
+}
+.lin-chip-no { background: var(--cb); border-color: var(--cb); color: #fff; }
+
+.lin-curves { position: absolute; inset: 0; overflow: visible; pointer-events: none; }
+.lin-curves path { fill: none; stroke: var(--cb); stroke-width: 1; stroke-dasharray: 1; stroke-dashoffset: 1; }
+.lin-curves [data-curve-head] { stroke-dasharray: none; stroke-dashoffset: 0; opacity: 0; }
+
+/* the teaser floats, just a little */
+.lin-float { animation: lin-float 6s ease-in-out infinite; }
+@keyframes lin-float {
+  50% { transform: translateY(-5px); }
+}
+.lin-orbit { transform-origin: 38px 38px; animation: lin-orbit 3.2s linear infinite; }
+@keyframes lin-orbit {
+  to { transform: rotate(360deg); }
+}
+
+.lin-words {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 var(--pad) calc(18px * var(--ui));
+}
+.lin-words p { margin: 0; }
+.lin-title { color: var(--cb); font-size: calc(20px * var(--ui)); line-height: 1.15; letter-spacing: -0.01em; }
+.lin-line { display: block; margin-top: 5px; font-family: var(--font-text), Georgia, serif; font-weight: 400; font-optical-sizing: auto; font-variation-settings: "SOFT" 60; font-size: calc(14.5px * var(--ui)); line-height: 1.35; color: var(--lin-grey); }
+.lin-words .lin-line { color: var(--ink-deep); }
+.lin-metric { text-align: right; white-space: nowrap; opacity: 0; }
+.lin-figure { color: var(--cb); font-size: calc(22px * var(--ui)); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lin-float, .lin-orbit { animation: none; }
+}
 
 /* words inside the drawings */
 .case-svg text {
@@ -143,24 +285,20 @@ body {
 }
 
 /* ------------------------------------------------------------------ portrait */
-/* pointing at it, the dots step back and the photo shows through, tinted green */
+/* pointing at it, the dots spark and fly apart while the real photo (its own colours)
+   fades in and zooms out from the dots' close-up to the whole picture */
 .portrait-photo {
   position: absolute;
   inset: 0;
   background-size: cover;
   background-position: 52% 22%;
-  filter: grayscale(1) contrast(1.05);
-  mix-blend-mode: multiply;
   opacity: 0;
-  transition: opacity 0.9s ease;
+  transform: scale(1.48);
+  transform-origin: 52% 18%;
+  transition: opacity 1s ease 0.25s, transform 1.8s cubic-bezier(0.25, 0.6, 0.2, 1);
 }
 
-.portrait-dots {
-  transition: opacity 0.9s ease;
-}
-
-.portrait:hover .portrait-photo { opacity: 0.9; }
-.portrait:hover .portrait-dots { opacity: 0; }
+.portrait:hover .portrait-photo { opacity: 1; transform: scale(1); }
 
 /* ------------------------------------------------------------------ contact */
 .contact-link {
@@ -168,7 +306,7 @@ body {
   align-items: baseline;
   justify-content: space-between;
   min-height: 44px;
-  padding: 11px 0;
+  padding: calc(11px * var(--ui)) 0;
   border-top: 1px solid rgb(38 74 135 / 0.35);
   color: inherit;
   text-decoration: none;
@@ -255,5 +393,5 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .fade-up, .name-letter, .name-caret, .contact-plane, .now-glow, .tool-tag { animation: none; }
   .draw { animation: none; stroke-dashoffset: 0; }
-  .portrait-photo, .portrait-dots { transition: none; }
+  .portrait-photo { transition: none; transform: none; }
 }

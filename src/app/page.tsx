@@ -2,11 +2,9 @@ import { Board, type Tile as BoardTile } from "@/components/Board";
 import { Grid } from "@/components/Grid";
 import { Hobbies } from "@/components/Hobbies";
 import { WindyField } from "@/components/WindyField";
-import { CasePlay } from "@/components/cases/play";
-import { CaseTile } from "@/components/cases/CaseTile";
-import { FormToOne } from "@/components/cases/FormToOne";
-import { PromptToFan } from "@/components/cases/PromptToFan";
-import { InsightToSaving } from "@/components/cases/InsightToSaving";
+import { VeloryComCase } from "@/components/cases/VeloryComCase";
+import { StudioCase } from "@/components/cases/StudioCase";
+import { InsightsCase } from "@/components/cases/InsightsCase";
 import { Tile } from "@/components/tiles/Tile";
 import { NameTile } from "@/components/tiles/NameTile";
 import { PortraitTile } from "@/components/tiles/PortraitTile";
@@ -14,32 +12,23 @@ import { ContactTile } from "@/components/tiles/ContactTile";
 import { NowTile } from "@/components/tiles/NowTile";
 import { HowIWork } from "@/components/tiles/HowIWork";
 import { AboutTile, SunflowerDrawing, ToolboxTile } from "@/components/tiles/Quiet";
-import { about, board, caseStudies, contact, intro, introMore, process, site } from "@/content/site";
+import { about, board, contact, intro, introMore, process, site } from "@/content/site";
 
 /* The home page: one board of rectangles. What matters most comes first and biggest:
-   who Lisa is (the name), the proof (three wide case studies), the person (portrait,
-   sunflowers, hobbies) and the next step (contact, the only yellow). */
+   who Lisa is (the name), the proof (three wide case studies, each its own shade of blue
+   and a short teaser of its story), the person (portrait, sunflowers, hobbies) and the next
+   step (contact, the only yellow). */
 
-const cases = ["velory-com", "velory-studio", "actionable-insights"];
-const study = (slug: string) => caseStudies.find((c) => c.slug === slug)!;
 const tools = about.facts.find((f) => f.label === "Toolbox")?.value.split(", ") ?? [];
-const caseTile = (slug: string, story: React.ReactNode) => {
-  const i = cases.indexOf(slug);
-  return (
-    <CaseTile index={i} total={cases.length} study={study(slug)} figure={board.figures[slug].figure} figureLabel={board.figures[slug].label}>
-      {story}
-    </CaseTile>
-  );
-};
 
 /* every rectangle, most important first (on unusual screen sizes the last ones are left out) */
 const tiles: BoardTile[] = [
   { id: "name", w: 2, node: <NameTile first={site.firstName} last={site.lastName} title={board.title} line={intro} /> },
-  { id: "velory", w: 2, node: caseTile("velory-com", <FormToOne index={0} />) },
-  { id: "studio", w: 2, node: caseTile("velory-studio", <PromptToFan index={1} />) },
-  { id: "insights", w: 2, node: caseTile("actionable-insights", <InsightToSaving index={2} />) },
-  { id: "contact", node: <ContactTile title={contact.title} email={site.email} linkedin={site.linkedin} cv={site.cv} note={contact.note} /> },
-  { id: "portrait", node: <PortraitTile src={site.portrait.src} alt={site.portrait.alt} hello={board.hello} /> },
+  { id: "velory", w: 2, node: <VeloryComCase copy={board.cases["velory-com"]} /> },
+  { id: "studio", w: 2, node: <StudioCase copy={board.cases["velory-studio"]} /> },
+  { id: "insights", w: 2, node: <InsightsCase copy={board.cases["actionable-insights"]} /> },
+  { id: "contact", node: <ContactTile title={contact.title} email={site.email} linkedin={site.linkedin} cv={site.cv} /> },
+  { id: "portrait", node: <PortraitTile src={site.portrait.src} alt={site.portrait.alt} /> },
   { id: "hobbies", node: <Hobbies /> },
   { id: "sunflowers", node: <WindyField /> },
   /* the calm extra row on taller screens */
@@ -92,11 +81,9 @@ const layouts: Record<string, Record<string, Spot>> = {
 
 export default function Home() {
   return (
-    <main className="relative h-dvh overflow-hidden">
+    <main className="relative min-h-dvh overflow-hidden">
       <Grid />
-      <CasePlay count={cases.length}>
-        <Board tiles={tiles} layouts={layouts} />
-      </CasePlay>
+      <Board tiles={tiles} layouts={layouts} />
     </main>
   );
 }

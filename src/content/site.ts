@@ -32,6 +32,8 @@ export const introMore = [
   "Currently at Velory, where I designed the journeys through the new portal, rebuilt velory.com and created the in-house studio the whole company now makes its marketing in.",
 ];
 
+export type CaseCopy = { title: string; role: string; metrics: { figure: string; label: string }[] };
+
 /* The board's own words (the rectangles on the home page). */
 export const board = {
   title: "Product designer who builds",
@@ -44,12 +46,24 @@ export const board = {
     hello: "A bit about me",
     facts: ["Lived in Australia", "Cheerleading world championships", "75 Hard"],
   },
-  /* the one figure that sums up each case study, shown big on its rectangle */
-  figures: {
-    "velory-com": { figure: "5 → 1", label: "fields in the demo form" },
-    "velory-studio": { figure: "~90 h", label: "saved in three weeks" },
-    "actionable-insights": { figure: "1 click", label: "from insight to saving" },
-  } as Record<string, { figure: string; label: string }>,
+  /* each case study's rectangle: its name, what I did, and the two numbers worth knowing */
+  cases: {
+    "velory-com": {
+      title: "velory.com",
+      role: "A fresher landing page, same brand.",
+      metrics: [{ figure: "4 mo", label: "research to live site" }],
+    },
+    "velory-studio": {
+      title: "Velory Studio",
+      role: "One sentence in, on-brand work out.",
+      metrics: [{ figure: "~90 h", label: "saved in three weeks" }],
+    },
+    "actionable-insights": {
+      title: "Actionable Insights",
+      role: "The portal finds the savings.",
+      metrics: [{ figure: "9 600 kr", label: "saved a year (example)" }],
+    },
+  } as Record<string, CaseCopy>,
 };
 
 /* What I bring: three rows, concrete enough to check. */

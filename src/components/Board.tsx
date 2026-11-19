@@ -5,9 +5,9 @@ import { Cell } from "./Cell";
 import { gridSize } from "./gridSize";
 
 /* Lays the rectangles out on the net, whatever size the screen is. The two common desktop
-   nets (6 × 2 and 6 × 3) have hand-placed layouts; any other size fills the net in order of
-   importance, row by row, and leaves out the least important ones that don't fit (the page
-   never scrolls). So the name, the case studies and the contact never go missing. */
+   nets (6 × 2 and 6 × 3) have hand-placed layouts; any other desktop size fills the net in
+   order of importance, row by row, and leaves out the least important ones that don't fit
+   (the page never scrolls). Phones and tablets get a scrolling net with every rectangle. */
 
 export type Tile = { id: string; w?: number; node: React.ReactNode };
 type Spot = [col: number, row: number];
@@ -17,8 +17,8 @@ const subscribe = (on: () => void) => {
   return () => window.removeEventListener("resize", on);
 };
 const netKey = () => {
-  const { cols, rows } = gridSize();
-  return `${cols}x${rows}`;
+  const { cols, rows, scroll } = gridSize();
+  return scroll ? `${cols}xscroll` : `${cols}x${rows}`;
 };
 
 /* fill the net in the tiles' order; a tile wider than the net is made to fit */
@@ -42,11 +42,14 @@ function pack(tiles: Tile[], cols: number, rows: number) {
 export function Board({ tiles, layouts }: { tiles: Tile[]; layouts: Record<string, Record<string, Spot>> }) {
   // the server assumes the common 6 × 2 net; the browser corrects it straight away
   const key = useSyncExternalStore(subscribe, netKey, () => "6x2");
-  const [cols, rows] = key.split("x").map(Number);
+  const [c, r] = key.split("x");
+  const cols = Number(c), scroll = r === "scroll";
   const fixed = layouts[key];
+  // a scrolling net has as many rows as it needs, so nothing is left out
   const spots = fixed
     ? Object.fromEntries(tiles.filter((t) => fixed[t.id]).map((t) => [t.id, Object.assign([...fixed[t.id]] as Spot, { w: t.w ?? 1 })]))
-    : pack(tiles, cols, rows);
+    : pack(tiles, cols, scroll ? 99 : Number(r));
+  const used = Math.max(0, ...Object.values(spots).map((s) => s[1] + 1));
 
   return (
     <>
@@ -58,6 +61,8 @@ export function Board({ tiles, layouts }: { tiles: Tile[]; layouts: Record<strin
           </Cell>
         ) : null;
       })}
+      {/* in a scrolling net, this gives the page its height */}
+      {scroll && <div aria-hidden="true" style={{ height: `calc(var(--cell-h) * ${used})` }} />}
     </>
   );
 }

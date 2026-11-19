@@ -36,7 +36,7 @@ const HOVER_PUSH = 200; // px/s added per frame at the cursor's centre
 const BACK_K = 25; // the spring that pulls pushed dots home
 const BACK_D = 9;
 const MARGIN_X = 8; // px kept clear at the sides of the rectangle
-const MARGIN_Y = 46; // px kept clear at the top and bottom, for the captions
+const MARGIN_Y = 64; // px kept clear at the top and bottom, for the captions (up to two lines)
 const NEAR_GROW = 1.12; // allowance for the nearest dots looking bigger
 
 const smooth = (v: number) => {
