@@ -14,6 +14,7 @@ export type Build = {
   seconds: number; // how long the build takes
   view: number; // how far we look down onto it (radians)
   spin: boolean; // turns all the way round; otherwise it rocks gently, facing you
+  tool?: [number, number]; // the dots (from, to) that make the tool, which winds in last
   update: (t: number, pos: Float32Array, show: Float32Array) => void;
 };
 
@@ -24,9 +25,15 @@ const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 const ease = (v: number) => v * v * (3 - 2 * v);
 
+/* build progress: it starts already moving (so it carries on from the thread that wound
+   it, with no pause), keeps an even pace, and settles softly at the end */
+const START_PACE = 0.7;
+const grow = (t: number) => {
+  const u = clamp01(t);
+  return START_PACE * (u * u * u - 2 * u * u + u) + (3 * u * u - 2 * u * u * u);
+};
 /* the soft growth wave: each dot has a key k (0 → 1, e.g. top to bottom) and fades in as
-   the wave front passes it. It gets going straight away and settles softly. */
-const grow = (t: number) => 1 - Math.pow(1 - clamp01(t), 2.2);
+   the wave front passes it */
 const BAND = 0.14;
 const front = (t: number) => grow(t) * (1 + BAND);
 const reveal = (t: number, k: number, band = BAND) => clamp01((front(t) - k) / band);
@@ -185,7 +192,7 @@ function pottery(N: number): Build {
       pos.set(wheel, 0);
       show.fill(1);
       // the puck grows straight up into the vase
-      const g = ease(t), A = keys[0], B = keys[1], o = nWheel * 3;
+      const g = grow(t), A = keys[0], B = keys[1], o = nWheel * 3;
       for (let j = 0; j < nClay * 3; j++) pos[o + j] = A[j] + (B[j] - A[j]) * g;
     },
   };
@@ -231,6 +238,7 @@ function crochet(N: number): Build {
     seconds: 4,
     view: 0.3,
     spin: true,
+    tool: [nSt, N],
     update(t, pos, show) {
       let o = 0;
       // the beanie grows from the crown down; fresh stitches settle from just above
@@ -243,13 +251,15 @@ function crochet(N: number): Build {
       }
       // the hook rides the growing edge, circling three times
       const y = lerp(yTop, yEnd, clamp01(front(t) + 0.12 - BAND / 2)), a = grow(t) * TAU * 3 + 0.6;
-      const r = radiusAt(y) + 0.25;
-      const tip = [r * Math.cos(a), y, r * Math.sin(a)];
+      // at the end it lifts up and away as it fades, still moving
+      const away = ease(clamp01((t - 0.84) / 0.16));
+      const r = radiusAt(y) + 0.25 + 1.6 * away;
+      const tip = [r * Math.cos(a), y + 1.4 * away, r * Math.sin(a)];
       const dir = [Math.cos(a) * 0.5 - Math.sin(a) * 0.25, 0.83, Math.sin(a) * 0.5 + Math.cos(a) * 0.25];
       const dl = Math.hypot(...dir);
       const d = dir.map((v) => v / dl);
       const [s, q] = frame(d);
-      const hookShow = 1 - clamp01((t - 0.88) / 0.1);
+      const hookShow = 1 - away;
       for (let i = 0; i < nHook; i++, o++) {
         place(hook, i, tip, d, s, q, pos, o);
         show[o] = hookShow;
@@ -334,12 +344,25 @@ function painting(N: number): Build {
   };
   const within = (te: number, [a, b]: number[]) => (te - a) / (b - a);
   const mix2 = (p: number[], q: number[], g: number) => [lerp(p[0], q[0], ease(clamp01(g))), lerp(p[1], q[1], ease(clamp01(g)))];
-  const brushAt = (te: number) => {
+  const pathAt = (te: number) => {
     if (te <= STEM[1]) return stemAt(within(te, STEM));
     if (te < CENTRE[0]) return mix2(stemAt(1), centreAt(0), within(te, [STEM[1], CENTRE[0]]));
     if (te <= CENTRE[1]) return centreAt(within(te, CENTRE));
     if (te < PETALS[0]) return mix2(centreAt(1), petalsAt(0), within(te, [CENTRE[1], PETALS[0]]));
     return petalsAt(within(te, PETALS));
+  };
+  // the brush follows that path softened, so it glides round the corners between strokes
+  // instead of stopping at each one
+  const SOFT = 0.035;
+  const brushAt = (te: number) => {
+    let x = 0, y = 0, n = 0;
+    for (let k = -4; k <= 4; k++) {
+      const wgt = 5 - Math.abs(k), [px, py] = pathAt(Math.min(1, Math.max(0, te + (k / 4) * SOFT)));
+      x += px * wgt;
+      y += py * wgt;
+      n += wgt;
+    }
+    return [x / n, y / n];
   };
   const brush = points(nBrush, (add, n) => {
     for (let k = 0; k < n; k++) {
@@ -354,6 +377,7 @@ function painting(N: number): Build {
     seconds: 4.5,
     view: 0.1,
     spin: false,
+    tool: [N - nBrush, N],
     update(t, pos, show) {
       pos.set(canvas, 0);
       let o = nCanvas;
@@ -365,7 +389,7 @@ function painting(N: number): Build {
         show[o] = clamp01((te - paintWhen[i]) / 0.04);
       }
       // the brush glides along its path; when the painting is done it lifts away and fades
-      const done = ease(clamp01((t - 0.9) / 0.1));
+      const done = ease(clamp01((t - 0.84) / 0.16));
       const [bx, by] = brushAt(te);
       const tip = [bx, by, PAINT_Z + 0.25 + 2.5 * done];
       for (let i = 0; i < nBrush; i++, o++) {
@@ -484,6 +508,7 @@ function rugTufting(N: number): Build {
     seconds: 4.5,
     view: 0.14,
     spin: false,
+    tool: [N - nGun, N],
     update(t, pos, show) {
       pos.set(frameDots, 0);
       pos.set(cloth, nFrame * 3);
@@ -500,11 +525,12 @@ function rugTufting(N: number): Build {
       // the gun sweeps back and forth four times, riding the band
       const gx = -W * 0.9 * Math.cos(Math.PI * 4 * grow(t));
       const gy = H - clamp01(front(t) - BAND / 2) * 2 * H;
-      const gunShow = 1 - clamp01((t - 0.9) / 0.1);
+      // at the end it lifts off the rug, toward you, as it fades
+      const away = ease(clamp01((t - 0.84) / 0.16)), gunShow = 1 - away;
       for (let i = 0; i < nGun; i++, o++) {
         pos[o * 3] = gx + gun[i * 3];
-        pos[o * 3 + 1] = gy + gun[i * 3 + 1];
-        pos[o * 3 + 2] = GUN_Z + gun[i * 3 + 2];
+        pos[o * 3 + 1] = gy + gun[i * 3 + 1] + 1.2 * away;
+        pos[o * 3 + 2] = GUN_Z + gun[i * 3 + 2] + 2.4 * away;
         show[o] = gunShow;
       }
     },

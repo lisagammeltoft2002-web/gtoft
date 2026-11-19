@@ -32,6 +32,26 @@ export const introMore = [
   "Currently at Velory, where I designed the journeys through the new portal, rebuilt velory.com and created the in-house studio the whole company now makes its marketing in.",
 ];
 
+/* The board's own words (the rectangles on the home page). */
+export const board = {
+  title: "Product designer who builds",
+  hello: "Hi, I’m Lisa.",
+  now: {
+    role: "Product engineer at Velory.",
+    open: "Open to roles at UX and creative studios.",
+  },
+  about: {
+    hello: "A bit about me",
+    facts: ["Lived in Australia", "Cheerleading world championships", "75 Hard"],
+  },
+  /* the one figure that sums up each case study, shown big on its rectangle */
+  figures: {
+    "velory-com": { figure: "5 → 1", label: "fields in the demo form" },
+    "velory-studio": { figure: "~90 h", label: "saved in three weeks" },
+    "actionable-insights": { figure: "1 click", label: "from insight to saving" },
+  } as Record<string, { figure: string; label: string }>,
+};
+
 /* What I bring: three rows, concrete enough to check. */
 export const bring = [
   {
@@ -337,10 +357,10 @@ export const caseStudies: CaseStudy[] = [
   },
   {
     slug: "actionable-insights",
-    short: "IT data turned into clear next steps.",
+    short: "The portal finds the savings and tells admins what to do.",
     url: "app.velory.com/insights",
     title: "Actionable Insights",
-    kind: "Product · UX and UI",
+    kind: "Velory portal · user journeys, UX and UI",
     year: "2026",
     tilt: -3,
     image: {
@@ -348,9 +368,9 @@ export const caseStudies: CaseStudy[] = [
       alt: "A mirrored glass block standing in a golden field below the hills",
     },
     outcome:
-      "Turning a company’s IT data into clear next steps, so saving money becomes the obvious choice.",
+      "In the Velory portal, admins no longer have to work out where money leaks. The portal spots it, like licences nobody uses, and suggests the next step. One click asks the people holding them in Slack or Teams, and every “not using it” becomes a cancelled licence and money saved.",
     meta: [
-      { label: "Role", value: "Lorem ipsum" },
+      { label: "Role", value: "The admin's journey: from insight to task to saving" },
       { label: "Team", value: "Lorem ipsum" },
       { label: "Timeline", value: "Lorem ipsum" },
       { label: "Tools", value: "Figma" },
