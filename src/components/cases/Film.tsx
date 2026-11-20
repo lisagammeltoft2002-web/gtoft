@@ -14,6 +14,8 @@ gsap.registerPlugin(TextPlugin);
 
 const W = 600;
 const H = 340;
+/** the app window every film is drawn in (left, top, right, bottom): the camera never shows past it */
+const CONTENT = [20, 14, 580, 326];
 
 export type Q = (selector: string) => Element[];
 
@@ -41,19 +43,22 @@ export interface Kit {
   metric: (at: number) => void;
 }
 
-/* fade a film back to its first frame */
+/* fade a film back to its first frame; returns the fades, so a new play can cancel just them */
 function rewind(tl: gsap.core.Timeline, fade: HTMLElement, metric: HTMLElement | null, reset: () => void) {
-  if (metric) gsap.to(metric, { autoAlpha: 0, duration: 0.3, overwrite: true });
-  gsap.to(fade, {
-    autoAlpha: 0,
-    duration: 0.3,
-    overwrite: true,
-    onComplete() {
-      tl.pause(0);
-      reset();
-      gsap.to(fade, { autoAlpha: 1, duration: 0.4 });
-    },
-  });
+  const out: gsap.core.Tween[] = [];
+  if (metric) out.push(gsap.to(metric, { autoAlpha: 0, duration: 0.3 }));
+  out.push(
+    gsap.to(fade, {
+      autoAlpha: 0,
+      duration: 0.3,
+      onComplete() {
+        tl.pause(0);
+        reset();
+        out.push(gsap.to(fade, { autoAlpha: 1, duration: 0.4 }));
+      },
+    }),
+  );
+  return out;
 }
 
 /* ------------------------------------------------------------------ one film */
@@ -73,22 +78,58 @@ export function useFilm(build: (k: Kit) => (() => void) | void) {
     const ring = q("[data-ripple]")[0] as HTMLElement;
     const stage = q("[data-stage]")[0] as HTMLElement;
     const metricEl = (q("[data-metric]")[0] as HTMLElement) ?? null;
+    let ro: ResizeObserver | null = null;
 
     const ctx = gsap.context(() => {
       const tl = gsap.timeline({ paused: true, defaults: { ease: "power3.out" } });
-      // the cursor keeps its size on screen while the camera zooms
-      const keepCursor = () => gsap.set(cur, { scale: 1 / (Number(gsap.getProperty(camEl, "scaleX")) || 1) });
-      tl.eventCallback("onUpdate", keepCursor);
 
-      const camVars = (x: number, y: number, z: number) => ({ x: W / 2 - x * z, y: H / 2 - y * z, scale: z });
+      /* the camera, as a list of shots: each one eases from wherever the camera is to its
+         own point (x, y) and zoom (z). Every shot is fenced inside the content (the app
+         window) first, so the screen is always filled and the camera glides along one smooth
+         path instead of bumping into an edge. Zoom changes at an even pace (in steps of
+         ratio, not size), and the camera is worked out from the film's time, so it is the
+         same however the film is played, paused or rewound. The cursor keeps its size. */
+      type Shot = { at: number; dur: number; x: number; y: number; z: number };
+      const shots: Shot[] = [];
+      let first = { x: W / 2, y: H / 2, z: 1 };
+      const [L, T, R, B] = CONTENT;
+      const camEase = gsap.parseEase("power2.inOut");
+      const apply = () => {
+        const r = stage.getBoundingClientRect();
+        if (!r.width || !r.height) return;
+        const s0 = Math.max(r.width / W, r.height / H);
+        const fence = (c: { x: number; y: number; z: number }) => {
+          const z = Math.max(c.z, r.width / (s0 * (R - L)), r.height / (s0 * (B - T)));
+          const hw = r.width / (s0 * z) / 2, hh = r.height / (s0 * z) / 2;
+          return { x: Math.min(Math.max(c.x, L + hw), R - hw), y: Math.min(Math.max(c.y, T + hh), B - hh), z };
+        };
+        const t = tl.time();
+        let c = fence(first);
+        for (const sh of shots) {
+          if (sh.at >= t) break;
+          const e = camEase(Math.min(1, (t - sh.at) / sh.dur)), to = fence(sh);
+          c = { x: c.x + (to.x - c.x) * e, y: c.y + (to.y - c.y) * e, z: c.z * Math.pow(to.z / c.z, e) };
+        }
+        gsap.set(camEl, { x: W / 2 - c.x * c.z, y: H / 2 - c.y * c.z, scale: c.z, transformOrigin: "0 0", force3D: false });
+        gsap.set(cur, { scale: 1 / c.z });
+      };
+      tl.eventCallback("onUpdate", apply);
+      ro = new ResizeObserver(apply);
+      ro.observe(stage);
       let cursorShown = false;
 
       const kit: Kit = {
         q,
         tl,
-        start: (x, y, z) => gsap.set(camEl, { ...camVars(x, y, z), transformOrigin: "0 0" }),
+        start: (x, y, z) => {
+          first = { x, y, z };
+          apply();
+        },
         cam: (x, y, z, at, dur = 1.15) => {
-          tl.to(camEl, { ...camVars(x, y, z), duration: dur, ease: "power3.inOut" }, at);
+          // a touch slower than asked: calm camera moves feel better than quick ones
+          shots.push({ at, dur: dur * 1.15, x, y, z });
+          shots.sort((a, b) => a.at - b.at);
+          tl.set({}, {}, at + dur * 1.15); // the film lasts at least until the shot lands
         },
         cursorStart: (x, y) => gsap.set(cur, { x, y, autoAlpha: 0 }),
         cursor: (x, y, at, dur = 0.85) => {
@@ -96,7 +137,8 @@ export function useFilm(build: (k: Kit) => (() => void) | void) {
             cursorShown = true;
             tl.to(cur, { autoAlpha: 1, duration: 0.25, ease: "none" }, at);
           }
-          tl.to(cur, { x, y, duration: dur, ease: "power2.inOut" }, at);
+          // x and y ease a little differently, so the cursor travels on a soft curve like a hand
+          tl.to(cur, { x, duration: dur, ease: "power2.inOut" }, at).to(cur, { y, duration: dur, ease: "sine.inOut" }, at);
         },
         hover: (selector, at, vars) => {
           tl.to(q(selector), { backgroundColor: "var(--f-accent-deep)", duration: 0.2, ease: "none", ...vars }, at);
@@ -128,10 +170,10 @@ export function useFilm(build: (k: Kit) => (() => void) | void) {
 
       const extraReset = build(kit) ?? (() => {});
       const reset = () => {
-        keepCursor();
+        apply();
         extraReset();
       };
-      keepCursor();
+      apply();
 
       if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
         tl.progress(1);
@@ -139,9 +181,10 @@ export function useFilm(build: (k: Kit) => (() => void) | void) {
         return;
       }
 
+      let fades: gsap.core.Tween[] = [];
       ctl.current = {
         play: () => {
-          gsap.killTweensOf([stage, metricEl].filter(Boolean));
+          fades.forEach((t) => t.kill());
           gsap.set(stage, { autoAlpha: 1 });
           if (tl.progress() > 0) {
             tl.pause(0);
@@ -151,12 +194,13 @@ export function useFilm(build: (k: Kit) => (() => void) | void) {
         },
         stop: () => {
           tl.pause();
-          if (tl.progress() > 0) rewind(tl, stage, metricEl, reset);
+          if (tl.progress() > 0) fades = rewind(tl, stage, metricEl, reset);
         },
       };
     }, root);
 
     return () => {
+      ro?.disconnect();
       ctl.current = null;
       ctx.revert();
     };
@@ -184,14 +228,14 @@ export function useFilm(build: (k: Kit) => (() => void) | void) {
 
 /* ------------------------------------------------------------------ the frame */
 
-/* the world (W × H) scaled to fit its space; inside it the camera, and the cursor on top */
+/* the world (W × H) scaled to cover its space; inside it the camera, and the cursor on top */
 export function FilmStage({ children }: { children: React.ReactNode }) {
   const box = useRef<HTMLDivElement>(null);
   const [s, setS] = useState(0);
   useEffect(() => {
     const el = box.current;
     if (!el) return;
-    const ro = new ResizeObserver(([e]) => setS(Math.min(e.contentRect.width / W, e.contentRect.height / H)));
+    const ro = new ResizeObserver(([e]) => setS(Math.max(e.contentRect.width / W, e.contentRect.height / H)));
     ro.observe(el);
     return () => ro.disconnect();
   }, []);

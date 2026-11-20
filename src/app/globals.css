@@ -39,7 +39,7 @@ html.net-scroll body {
 }
 
 /* every rectangle is a rounded container on white, with an even gap around it */
-.cell { border-radius: 18px; isolation: isolate; }
+.cell { border-radius: 18px; isolation: isolate; box-shadow: 0 1px 2px rgb(20 32 64 / 0.04), 0 10px 26px -14px rgb(20 32 64 / 0.16); }
 
 body {
   background: #fff;
@@ -163,20 +163,24 @@ body {
 .film-stage {
   position: relative;
   min-height: 0;
-  /* the UI runs to the sides and top, and fades out smoothly at the bottom */
-  -webkit-mask-image: linear-gradient(to bottom, #000 76%, transparent);
-  mask-image: linear-gradient(to bottom, #000 76%, transparent);
+  /* no fades: the video plays inside its own rounded screen, a little in from the edges and a
+     gap above the title, so anything cut off always ends in a rounded corner */
+  overflow: hidden;
+  margin: 10px 10px calc(14px * var(--ui));
+  border-radius: 14px;
+  /* the screen is the app: always filled, white, edge to edge */
+  background: #fff;
 }
 .film-world { position: absolute; left: 50%; top: 50%; transform-origin: 50% 50%; }
-.film-cam { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
+/* no will-change: the UI is redrawn at each zoom, so text stays sharp close up */
+.film-cam { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
 .film .f-abs { position: absolute; }
 .film .f-hidden { opacity: 0; visibility: hidden; }
+/* the app window melts into the white screen: no edge, no shadow */
 .film .f-win {
   position: absolute;
   overflow: hidden;
   background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 0 0 1px rgb(20 32 64 / 0.05), 0 20px 44px -26px rgb(22 44 96 / 0.22);
 }
 .film .f-serif { font-family: var(--font-flower), Georgia, serif; font-weight: 600; letter-spacing: -0.015em; }
 .film .f-grey { color: var(--f-grey); }
@@ -346,17 +350,16 @@ body {
   outline-offset: 2px;
 }
 
-/* the paper plane drifts, and takes off while you point at a link */
+/* the paper plane drifts, and leans forward a little while you point at a link (it never leaves) */
 .contact-plane {
   animation: plane-drift 4s ease-in-out infinite;
-  transition: transform 0.9s cubic-bezier(0.5, 0, 0.3, 1), opacity 0.9s;
+  transition: transform 0.9s cubic-bezier(0.5, 0, 0.3, 1);
 }
 
 .tile:has(.contact-link:hover) .contact-plane,
 .tile:has(.contact-link:focus-visible) .contact-plane {
   animation: none;
-  transform: translate(160px, -50px) rotate(-8deg);
-  opacity: 0;
+  transform: translate(10px, -6px) rotate(-4deg);
 }
 
 @keyframes plane-drift {

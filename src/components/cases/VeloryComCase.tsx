@@ -3,86 +3,93 @@
 import type { CaseCopy } from "@/content/site";
 import { CaseWords, Check, FilmStage, useFilm } from "./Film";
 
-/* velory.com, as a product video: a visitor goes from the headline to a booked demo.
-   Close on the hero, "Someone left. Licences stayed." The cursor clicks "See how" (closer);
-   the camera pulls back and the page scrolls past the proof and the platform to "Try it".
-   Closer on the form with its one field: an email types in, the round button is pressed,
-   and the demo is booked. All the way out. */
+/* velory.com, as a short teaser: someone looks it up and the site scrolls by.
+   A new browser tab, its search field empty. The cursor clicks it, types velory.com and
+   presses enter; the site loads and scrolls from the problem-first hero, past the proof and
+   the platform, to "Try it". The browser bar stays at the top the whole time. */
 
 const SCROLL_END = 560;
-// world y of a page y once the page has scrolled to the end
-const endY = (p: number) => 44 + p - SCROLL_END;
-const FIELD = [250, endY(685)];
-const GO = [413, endY(685)];
+const FIELD = [300, 156]; // the new tab's search field, in the world
 
 export function VeloryComCase({ copy }: { copy: CaseCopy }) {
   const { ref, handlers } = useFilm((k) => {
     const { tl, q } = k;
-    k.start(195, 182, 1.6);
-    k.cursorStart(300, 330);
+    // one camera for the whole film: the browser, filling the screen, its bar at the top
+    k.start(300, 0, 1);
+    k.cursorStart(420, 250);
 
-    // 1. the hero, then "See how"
-    tl.fromTo(q("[data-check]"), { autoAlpha: 0, scale: 0.5 }, { autoAlpha: 1, scale: 1, duration: 0.3, stagger: 0.18, ease: "back.out(2.5)", immediateRender: false }, 0.4);
-    k.cursor(80, 266, 0.9, 0.9);
-    k.cam(135, 245, 2.5, 0.95, 1.05);
-    k.hover("[data-seehow]", 1.75);
-    k.click("[data-seehow]", 2.0);
+    // 1. lean in on the search field, click it and type
+    k.cam(FIELD[0], FIELD[1] - 10, 1.7, 0.2, 1.0);
+    k.cursor(FIELD[0] - 40, FIELD[1] + 4, 0.3, 0.8);
+    k.click("[data-field]", 1.15);
+    tl.to(q("[data-field]"), { boxShadow: "0 0 0 1.5px var(--f-accent), 0 8px 20px -12px rgb(20 40 90 / 0.3)", duration: 0.2 }, 1.2);
+    k.hide("[data-url-ph]", 1.2, 0.1);
+    tl.fromTo(q("[data-caret]"), { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.01 }, 1.2);
+    k.type("[data-url]", "velory.com", 1.35, 0.7);
 
-    // 2. out, and the page scrolls to "Try it"
-    k.cam(300, 172, 1, 2.3, 1.1);
-    tl.to(q("[data-cursor]"), { x: 470, y: 230, duration: 0.9, ease: "power2.inOut" }, 2.35);
-    tl.to(q("[data-page]"), { y: -250, duration: 1.1, ease: "power3.inOut" }, 2.55);
-    tl.to(q("[data-page]"), { y: -SCROLL_END, duration: 1.1, ease: "power3.inOut" }, 4.0);
+    // 2. enter: the site loads
+    k.hide("[data-caret]", 2.2, 0.01);
+    tl.to(q("[data-cursor]"), { autoAlpha: 0, duration: 0.3 }, 2.25);
+    tl.fromTo(q("[data-load]"), { scaleX: 0, autoAlpha: 1 }, { scaleX: 1, duration: 0.6, ease: "power2.inOut" }, 2.2).to(q("[data-load]"), { autoAlpha: 0, duration: 0.2 }, 2.8);
+    k.show("[data-addr]", 2.3, { y: 0, duration: 0.3 });
+    k.cam(300, 0, 1, 2.1, 1.0);
+    k.hide("[data-newtab]", 2.3, 0.25);
+    k.show("[data-site]", 2.5, { y: 8, duration: 0.6 });
+    tl.fromTo(q("[data-check]"), { autoAlpha: 0, scale: 0.5 }, { autoAlpha: 1, scale: 1, duration: 0.3, stagger: 0.15, ease: "back.out(2.5)", immediateRender: false }, 3.0);
 
-    // 3. closer on the form: one field, type, send
-    k.cam(300, 168, 1.95, 5.05, 1.1);
-    k.cursor(FIELD[0], FIELD[1] + 3, 5.2, 0.85);
-    k.click(null, 6.1);
-    tl.to(q("[data-field]"), { boxShadow: "0 0 0 1.5px var(--f-accent), 0 6px 18px -8px rgb(20 40 90 / 0.3)", duration: 0.2 }, 6.15);
-    k.hide("[data-field-ph]", 6.15, 0.1);
-    tl.fromTo(q("[data-caret]"), { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.01 }, 6.15);
-    k.type("[data-email]", "anna@acme.se", 6.3, 0.85);
-    k.cursor(GO[0] + 3, GO[1] + 3, 7.2, 0.6);
-    k.cam(GO[0] - 50, GO[1] + 8, 2.7, 7.15, 0.85);
-    k.hover("[data-go]", 7.8, { scale: 1.1 });
-    k.click("[data-go]", 8.05);
-    k.hide("[data-caret]", 8.1, 0.01);
-    k.hide("[data-go-arrow]", 8.15, 0.12);
-    tl.fromTo(q("[data-go-spin]"), { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.1 }, 8.2);
-    tl.to(q("[data-go-spin]"), { autoAlpha: 0, duration: 0.1 }, 8.85);
-    tl.to(q("[data-go]"), { backgroundColor: "var(--f-green)", scale: 1, duration: 0.25 }, 8.85);
-    tl.fromTo(q("[data-go-done]"), { autoAlpha: 0, scale: 0.4 }, { autoAlpha: 1, scale: 1, duration: 0.35, ease: "back.out(3)" }, 8.9);
-
-    // 4. booked
-    k.cam(300, 175, 1.85, 9.0, 1.0);
-    tl.to(q("[data-cursor]"), { x: 470, y: 300, duration: 0.8, ease: "power2.inOut" }, 9.0);
-    k.show("[data-booked]", 9.2, { y: 10, scale: 0.96, duration: 0.5 });
-    k.cam(300, 172, 1.02, 10.6, 1.2);
-    tl.to(q("[data-cursor]"), { autoAlpha: 0, duration: 0.3 }, 10.7);
-    k.metric(11.0);
-    tl.set({}, {}, 12.2);
+    // 3. the whole site scrolls by, with a breath at each part
+    tl.to(q("[data-page]"), { y: -270, duration: 1.5, ease: "power2.inOut" }, 4.2);
+    tl.to(q("[data-page]"), { y: -SCROLL_END, duration: 1.5, ease: "power2.inOut" }, 6.3);
+    k.metric(7.9);
+    tl.set({}, {}, 9.2);
   });
 
   return (
     <article ref={ref} className="lin-tile film" aria-label={`${copy.title}: ${copy.role}`} {...handlers}>
       <FilmStage>
         <div className="f-win" style={{ left: 20, top: 14, width: 560, height: 312 }}>
-          {/* browser bar */}
-          <div className="f-abs z-10 flex items-center gap-1.5 border-b border-[var(--f-line)] bg-[var(--f-soft)] px-3" style={{ left: 0, top: 0, width: 560, height: 30 }}>
-            {["#f0b4ad", "#f3d79a", "#b8dcb0"].map((c) => (
-              <span key={c} className="block h-[8px] w-[8px] rounded-full" style={{ background: c }} />
-            ))}
-            <span className="f-grey mx-auto flex items-center gap-1 rounded-[6px] bg-white px-14 py-[3px] text-[9.5px] shadow-[0_0_0_1px_var(--f-line)]">
+          {/* browser bar, full width at the top */}
+          <div className="f-abs z-10 flex items-center gap-3 border-b border-[var(--f-line)] bg-[var(--f-soft)] px-3" style={{ left: 0, top: 0, width: 560, height: 36 }}>
+            <span className="flex gap-1.5">
+              {["#f0b4ad", "#f3d79a", "#b8dcb0"].map((c) => (
+                <span key={c} className="block h-[10px] w-[10px] rounded-full" style={{ background: c }} />
+              ))}
+            </span>
+            <svg width="52" height="13" viewBox="0 0 40 10" aria-hidden="true" fill="none" stroke="var(--f-faint)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 1.5 1.5 5 5 8.5M20 1.5 23.5 5 20 8.5" />
+              <path d="M38 5a3.6 3.6 0 1 1-1.1-2.6M38 1v2.4h-2.4" />
+            </svg>
+            <span className="flex flex-1 items-center gap-1.5 rounded-full bg-white px-3 text-[11px] shadow-[0_0_0_1px_var(--f-line)]" style={{ height: 24 }}>
               <svg width="7" height="8" viewBox="0 0 7 8" aria-hidden="true">
                 <rect x="0.5" y="3.3" width="6" height="4.2" rx="1" fill="var(--f-faint)" />
                 <path d="M1.8 3.4V2.4a1.7 1.7 0 0 1 3.4 0v1" fill="none" stroke="var(--f-faint)" strokeWidth="0.9" />
               </svg>
-              velory.com
+              <span data-addr="" className="f-hidden">velory.com</span>
+            </span>
+            <span className="block h-[20px] w-[20px] rounded-full bg-[var(--f-accent-wash)]" />
+            {/* the page loading */}
+            <span data-load="" className="absolute bottom-[-1px] left-0 h-[1.5px] w-full origin-left bg-[var(--f-accent)] opacity-0" />
+          </div>
+
+          {/* a new tab: one search field */}
+          <div data-newtab="" className="f-abs grid place-items-center" style={{ left: 0, top: 36, width: 560, height: 276 }}>
+            <span data-field="" className="flex items-center gap-2 rounded-full bg-white px-4 text-[11px] shadow-[0_0_0_1px_var(--f-line),0_8px_20px_-14px_rgb(20_40_90/0.25)]" style={{ width: 300, height: 34, marginTop: -36 }}>
+              <svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true" fill="none" stroke="var(--f-grey)" strokeWidth="1.4" strokeLinecap="round">
+                <circle cx="5.2" cy="5.2" r="3.8" />
+                <path d="M8 8l2.8 2.8" />
+              </svg>
+              <span className="relative flex-1">
+                <span data-url-ph="" className="f-faint absolute left-0 whitespace-nowrap">
+                  Search or type a URL
+                </span>
+                <span data-url="" />
+                <span data-caret="" className="f-caret f-hidden" />
+              </span>
             </span>
           </div>
 
           {/* the page, scrolled by the film */}
-          <div className="f-abs overflow-hidden" style={{ left: 0, top: 30, width: 560, height: 282 }}>
+          <div data-site="" className="f-abs f-hidden overflow-hidden" style={{ left: 0, top: 36, width: 560, height: 276 }}>
             <div data-page="" className="f-abs" style={{ left: 0, top: 0, width: 560, height: 842 }}>
               {/* nav */}
               <div className="f-abs flex items-center" style={{ left: 24, top: 0, right: 24, height: 40 }}>
@@ -110,7 +117,7 @@ export function VeloryComCase({ copy }: { copy: CaseCopy }) {
                 Velory finds every laptop, licence and login when people join, move or leave, and takes care of it.
               </p>
               <div className="f-abs flex gap-2" style={{ left: 24, top: 206 }}>
-                <span data-seehow="" className="f-btn" style={{ height: 26, padding: "0 14px" }}>
+                <span className="f-btn" style={{ height: 26, padding: "0 14px" }}>
                   See how
                 </span>
                 <span className="f-btn f-ghost" style={{ height: 26, padding: "0 14px" }}>
@@ -160,43 +167,18 @@ export function VeloryComCase({ copy }: { copy: CaseCopy }) {
 
               {/* try it */}
               <div className="f-abs bg-[var(--f-accent-wash)]" style={{ left: 0, top: 560, width: 560, height: 282 }} />
-              <p className="f-serif f-abs m-0 w-full text-center text-[24px] text-[color:var(--f-accent-deep)]" style={{ left: 0, top: 598 }}>
+              <p className="f-serif f-abs m-0 w-full text-center text-[24px] text-[color:var(--f-accent-deep)]" style={{ left: 0, top: 628 }}>
                 See it on your own setup
               </p>
-              <p className="f-grey f-abs m-0 w-full text-center text-[10px]" style={{ left: 0, top: 636 }}>
+              <p className="f-grey f-abs m-0 w-full text-center text-[10px]" style={{ left: 0, top: 666 }}>
                 One field. We’ll do the rest.
               </p>
-              <div data-field="" className="f-abs flex items-center rounded-full bg-white pl-4 pr-1 shadow-[0_0_0_1px_var(--f-line),0_6px_18px_-8px_rgb(20_40_90/0.25)]" style={{ left: 150, top: 668, width: 260, height: 34 }}>
-                <span className="relative flex-1 text-[10.5px]">
-                  <span data-field-ph="" className="f-faint absolute left-0 top-1/2 -translate-y-1/2 whitespace-nowrap">
-                    Work email
-                  </span>
-                  <span data-email="" />
-                  <span data-caret="" className="f-caret f-hidden" />
-                </span>
-                <span data-go="" className="f-round relative" style={{ width: 26, height: 26 }}>
-                  <svg data-go-arrow="" width="11" height="11" viewBox="0 0 12 12" aria-hidden="true" className="[grid-area:1/1]">
+              <div className="f-abs flex items-center rounded-full bg-white pl-4 pr-1 shadow-[0_0_0_1px_var(--f-line),0_6px_18px_-8px_rgb(20_40_90/0.25)]" style={{ left: 150, top: 698, width: 260, height: 34 }}>
+                <span className="f-faint flex-1 text-[10.5px]">Work email</span>
+                <span className="f-round" style={{ width: 26, height: 26 }}>
+                  <svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true">
                     <path d="M2 6h7.8M6.4 2.5 9.9 6l-3.5 3.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
-                  <svg data-go-spin="" className="f-spin f-hidden [grid-area:1/1]" width="11" height="11" viewBox="0 0 10 10" aria-hidden="true">
-                    <path d="M5 1a4 4 0 1 1-4 4" fill="none" stroke="#fff" strokeWidth="1.4" strokeLinecap="round" />
-                  </svg>
-                  <span data-go-done="" className="f-hidden grid scale-[1.3] place-items-center [grid-area:1/1]">
-                    <Check />
-                  </span>
-                </span>
-              </div>
-              <div data-booked="" className="f-abs f-hidden flex items-center gap-2.5 rounded-[12px] bg-white px-3 shadow-[0_0_0_1px_var(--f-line),0_12px_28px_-18px_rgb(20_40_90/0.25)]" style={{ left: 170, top: 716, width: 220, height: 42 }}>
-                <span className="grid h-[26px] w-[24px] shrink-0 overflow-hidden rounded-[5px] border border-[var(--f-line)] text-center">
-                  <span className="block bg-[var(--f-red)] text-[6px] font-semibold leading-[8px] text-white">TUE</span>
-                  <span className="block text-[11px] font-semibold leading-[16px]">14</span>
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-[10.5px] font-semibold">Demo booked · Tue 10:00</span>
-                  <span className="f-grey block text-[8.5px]">Invite sent to anna@acme.se</span>
-                </span>
-                <span className="ml-auto grid h-[16px] w-[16px] place-items-center rounded-full bg-[var(--f-green)] text-white">
-                  <Check />
                 </span>
               </div>
             </div>

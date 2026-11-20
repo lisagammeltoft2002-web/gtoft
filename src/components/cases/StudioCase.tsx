@@ -29,7 +29,7 @@ export function StudioCase({ copy }: { copy: CaseCopy }) {
 
     // 2. to the send button, closer, press
     k.cursor(SEND[0] + 2, SEND[1] + 2, 3.2, 0.9);
-    k.cam(SEND[0] - 40, SEND[1] - 20, 2.6, 3.25, 1.05);
+    k.cam(SEND[0] - 70, SEND[1] - 30, 2.15, 3.25, 1.05);
     k.hover("[data-send]", 4.05, { scale: 1.08 });
     k.click("[data-send]", 4.35);
 
@@ -47,12 +47,11 @@ export function StudioCase({ copy }: { copy: CaseCopy }) {
       { opacity: 1, duration: 0.25, stagger: 0.12, repeat: 4, yoyo: true, ease: "sine.inOut", immediateRender: false },
       5.4,
     );
-    k.hide("[data-thinking]", 7.0, 0.2);
-    k.show("[data-reply]", 7.1, { duration: 0.4 });
+    k.hide("[data-thinking]", 6.95, 0.15);
+    k.show("[data-reply]", 7.15, { duration: 0.4 });
 
     // 4. out: the banner builds on the canvas
     k.cam(300, 170, 1, 7.6, 1.25);
-    k.hide("[data-empty]", 7.7, 0.25);
     k.show("[data-banner]", 7.9, { y: 10, scale: 0.97, duration: 0.6 });
     tl.fromTo(k.q("[data-banner-bg]"), { clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0% 0 0)", duration: 0.7, ease: "power3.inOut" }, 8.0);
     k.show("[data-banner-part]", 8.45, { y: 8, duration: 0.45 }, 0.09);
@@ -78,27 +77,14 @@ export function StudioCase({ copy }: { copy: CaseCopy }) {
     <article ref={ref} className="lin-tile film" aria-label={`${copy.title}: ${copy.role}`} {...handlers}>
       <FilmStage>
         <div className="f-win" style={{ left: 20, top: 14, width: 560, height: 312 }}>
-          {/* top bar */}
-          <div className="f-abs flex items-center gap-2 border-b border-[var(--f-line)] px-3" style={{ left: 0, top: 0, width: 560, height: 34 }}>
-            <span className="grid h-[18px] w-[18px] place-items-center rounded-[5px] bg-[var(--f-accent)] text-[10px] font-semibold text-white">V</span>
-            <span className="text-[11.5px] font-medium">Velory Studio</span>
-            <span className="f-faint text-[10px]">/ Spring webinar</span>
-            <span className="ml-auto flex items-center gap-2">
-              <span className="f-grey text-[10px]">Brand kit</span>
-              <span className="f-btn f-ghost" style={{ height: 20, fontSize: 9.5 }}>
-                Share
-              </span>
-            </span>
-          </div>
-
           {/* chat */}
-          <div className="f-abs border-r border-[var(--f-line)]" style={{ left: 0, top: 34, width: 236, height: 278 }}>
-            <div data-msg="" className="f-abs f-hidden rounded-[12px] rounded-br-[4px] bg-[var(--f-accent)] px-2.5 py-2 text-[9.5px] leading-[1.4] text-white" style={{ right: 12, top: 14, width: 178 }}>
+          <div className="f-abs border-r border-[var(--f-line)]" style={{ left: 0, top: 0, width: 236, height: 312 }}>
+            <div data-msg="" className="f-abs f-hidden rounded-[12px] rounded-br-[4px] bg-[var(--f-accent)] px-2.5 py-2 text-[9.5px] leading-[1.4] text-white" style={{ right: 12, top: 48, width: 178 }}>
               {PROMPT}
               <span className="rounded-full bg-white/20 px-1.5 py-[1px]">@Brand kit</span>
             </div>
 
-            <div data-ai="" className="f-abs f-hidden flex items-start gap-2" style={{ left: 12, top: 86, width: 212 }}>
+            <div data-ai="" className="f-abs f-hidden flex items-start gap-2" style={{ left: 12, top: 120, width: 212 }}>
               <span className="grid h-[20px] w-[20px] shrink-0 place-items-center rounded-full bg-[var(--f-accent-wash)]">
                 <Spark />
               </span>
@@ -110,16 +96,13 @@ export function StudioCase({ copy }: { copy: CaseCopy }) {
                   ))}
                 </span>
                 <div data-reply="" className="f-hidden rounded-[12px] rounded-tl-[4px] bg-[var(--f-soft)] px-2.5 py-2 text-[9.5px] leading-[1.45] [grid-area:1/1]">
-                  Your banner is ready. On brand, 1200 × 627, with the webinar date and a sign-up button.
-                  <span className="mt-1.5 flex items-center gap-1 text-[8.5px] font-medium text-[color:var(--f-green)]">
-                    <Check /> Brand check passed
-                  </span>
+                  Your banner is ready, on brand.
                 </div>
               </div>
             </div>
 
             {/* composer */}
-            <div className="f-abs rounded-[14px] border border-[var(--f-line)] bg-white shadow-[0_6px_18px_-12px_rgb(20_40_90/0.18)]" style={{ left: 12, top: 164, width: 212, height: 100 }}>
+            <div className="f-abs rounded-[14px] border border-[var(--f-line)] bg-white shadow-[0_6px_18px_-12px_rgb(20_40_90/0.18)]" style={{ left: 12, top: 198, width: 212, height: 100 }}>
               <div className="f-abs text-[10px] leading-[1.42]" style={{ left: 11, top: 9, right: 11 }}>
                 <span data-placeholder="" className="f-faint f-abs left-0 top-0 whitespace-nowrap">
                   Describe what you need…
@@ -142,12 +125,8 @@ export function StudioCase({ copy }: { copy: CaseCopy }) {
           </div>
 
           {/* canvas */}
-          <div className="f-abs f-dots bg-[var(--f-soft)]" style={{ left: 236, top: 34, width: 324, height: 278 }}>
-            <div data-empty="" className="f-abs grid place-items-center rounded-[10px] border border-dashed border-[#d5dbe6] text-[9.5px] text-[color:var(--f-faint)]" style={{ left: 26, top: 40, width: 272, height: 142 }}>
-              Your work appears here
-            </div>
-
-            <div data-banner="" className="f-abs f-hidden overflow-hidden rounded-[8px] shadow-[0_10px_26px_-16px_rgb(20_40_90/0.3)]" style={{ left: 26, top: 40, width: 272, height: 142 }}>
+          <div className="f-abs f-dots bg-[var(--f-soft)]" style={{ left: 236, top: 0, width: 324, height: 312 }}>
+            <div data-banner="" className="f-abs f-hidden overflow-hidden rounded-[8px] shadow-[0_10px_26px_-16px_rgb(20_40_90/0.3)]" style={{ left: 26, top: 74, width: 272, height: 142 }}>
               <div data-banner-bg="" className="absolute inset-0" style={{ background: "linear-gradient(120deg, #1f3f78 0%, #3a66ad 70%, #5b8bd0 100%)" }} />
               <svg data-banner-part="" className="f-hidden absolute" style={{ right: 14, top: 22 }} width="104" height="98" viewBox="0 0 104 98" aria-hidden="true">
                 <circle cx="70" cy="32" r="24" fill="#f5d04f" />
@@ -173,7 +152,7 @@ export function StudioCase({ copy }: { copy: CaseCopy }) {
               </span>
             </div>
 
-            <div data-banner-foot="" className="f-abs f-hidden flex items-center" style={{ left: 26, top: 192, width: 272 }}>
+            <div data-banner-foot="" className="f-abs f-hidden flex items-center" style={{ left: 26, top: 226, width: 272 }}>
               <span className="f-grey text-[9px]">Banner · 1200 × 627</span>
               <span data-li="" className="f-btn f-ghost ml-auto" style={{ height: 26, gap: 6 }}>
                 <span className="grid h-[13px] w-[13px] place-items-center rounded-[3px] bg-[#0a66c2] text-[8px] font-bold leading-none text-white">in</span>

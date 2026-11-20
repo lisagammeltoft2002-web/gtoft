@@ -7,7 +7,7 @@ const plane = (n: number) => [paperPlane(n)];
 
 /* The way to reach Lisa: the only yellow on the page, so the eye ends here. A paper plane
    drawn by the hobbies' own engine (Bloom: tiny sky-blue dots that build themselves, turn,
-   lean toward the cursor and scatter when you point at them) folds itself again and again,
+   lean toward the cursor and scatter when you point at them) is always there, finished,
    then one warm line and email, LinkedIn and the CV as big, easy links (44px tall).
    (The addresses come from site.ts.) */
 
@@ -24,9 +24,10 @@ export function ContactTile({ title, email, linkedin, cv }: { title: string; ema
     <section className="tile tone-sun">
       <div className="tile-grid">
         <span aria-hidden="true" />
-        <div className="tile-stage">
-          <div className="contact-plane h-full max-h-[210px] w-full">
-            <Bloom make={plane} dots={3800} marginY={6} label="A paper plane made of tiny blue dots that folds itself, turns, and unfolds again" />
+        {/* the plane fills the space above the words, centred in it */}
+        <div className="tile-stage pointer-events-none">
+          <div className="contact-plane absolute inset-x-0 -inset-y-6">
+            <Bloom make={plane} dots={6000} marginY={0} leanPitch={0.12} label="A paper plane made of tiny blue dots, rocking gently" />
           </div>
         </div>
         <div className="tile-foot pointer-events-auto">

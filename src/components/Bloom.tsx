@@ -87,8 +87,9 @@ export function Bloom({
   make = buildHobbies,
   dots: DOTS = 20000,
   marginY: MARGIN_Y = 64,
+  leanPitch = LEAN_PITCH,
   label = HOBBIES_LABEL,
-}: { onShape?: (index: number) => void; make?: (n: number) => Build[]; dots?: number; marginY?: number; label?: string } = {}) {
+}: { onShape?: (index: number) => void; make?: (n: number) => Build[]; dots?: number; marginY?: number; leanPitch?: number; label?: string } = {}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const onShapeRef = useRef(onShape);
   useEffect(() => {
@@ -298,7 +299,9 @@ export function Bloom({
     const endChange = () => slotIdx.set(nextIdx);
 
     let hobby = 0;
-    show(hobby, still ? 1 : 0);
+    // a single sculpture (the plane) is always there, finished; only the hobbies build and change
+    const builds1 = count === 1;
+    show(hobby, still || builds1 ? 1 : 0);
 
     const rot = new THREE.Matrix3();
     const uniforms = {
@@ -403,7 +406,7 @@ export function Bloom({
       last = now;
       real += dt;
 
-      if (!still) {
+      if (!still && !builds1) {
         clock += dt;
         if (!changing && clock >= buildAt(hobby) + builds[hobby].seconds - LEAD) {
           prevHobby = hobby;
@@ -441,7 +444,7 @@ export function Bloom({
       const yawOf = (b: Build) => (b.spin ? spinYaw : still ? 0.35 : ROCK * Math.sin(real * ROCK_SPEED));
       let turn = yawOf(B) - yawOf(A);
       turn -= Math.round(turn / (Math.PI * 2)) * Math.PI * 2; // the short way round
-      const ya = yawOf(A) + turn * m + leanX * LEAN_YAW, pa = A.view + (B.view - A.view) * m - leanY * LEAN_PITCH;
+      const ya = yawOf(A) + turn * m + leanX * LEAN_YAW, pa = A.view + (B.view - A.view) * m - leanY * leanPitch;
       scale = hobbyScale[prevHobby] + (hobbyScale[hobby] - hobbyScale[prevHobby]) * m;
       uniforms.uScale.value = scale;
       const cy = Math.cos(ya), sy = Math.sin(ya), cp = Math.cos(pa), sp = Math.sin(pa);

@@ -552,6 +552,7 @@ export function buildHobbies(n: number): Build[] {
 export function paperPlane(N: number): Build {
   const NOSE = [8.25, 0.6, 0], TAIL = [-8.25, 0.6, 0], KEEL = [-8.25, -2.6, 0], SPAN = 6.4;
   const OPEN = 1.42; // how far the wings fold out (radians from standing up)
+  const TURN_C = Math.cos(0.5), TURN_S = Math.sin(0.5);
   const nKeel = Math.round(N * 0.22);
   // each dot: which part (0 keel, -1 / 1 wings), and where on that triangle (u along, v across)
   const side = new Int8Array(N), U = new Float32Array(N), V = new Float32Array(N), key = new Float32Array(N);
@@ -573,8 +574,8 @@ export function paperPlane(N: number): Build {
   return {
     name: "paper plane",
     seconds: 4.2,
-    view: 0.26,
-    spin: true,
+    view: 0.62, // seen from a little above, so the wings show
+    spin: false, // rocks gently instead of turning edge-on
     update(t, pos, show) {
       const fold = (s: number) => ease(clamp01((t - (s > 0 ? 0.42 : 0.52)) / 0.4)) * OPEN;
       const fR = fold(1), fL = fold(-1);
@@ -589,9 +590,10 @@ export function paperPlane(N: number): Build {
           y += Math.cos(f) * SPAN * v;
           z += s * Math.sin(f) * SPAN * v;
         }
-        pos[i * 3] = x;
+        // turned three-quarters, nose toward you and to the right, so its shape always reads
+        pos[i * 3] = x * TURN_C - z * TURN_S;
         pos[i * 3 + 1] = y;
-        pos[i * 3 + 2] = z;
+        pos[i * 3 + 2] = x * TURN_S + z * TURN_C;
         show[i] = reveal(t / 0.55, key[i]);
       }
     },
