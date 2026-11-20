@@ -400,8 +400,17 @@ export function Bloom({
     let moving = false; // any dot still pushed out of place
     let last = performance.now(), raf = 0;
 
+    /* only work while it can be seen (a case page has several of these) */
+    let seen = true;
+    const io = new IntersectionObserver(([e]) => (seen = e.isIntersecting));
+    io.observe(canvas);
+
     const frame = (now: number) => {
       raf = requestAnimationFrame(frame);
+      if (!seen) {
+        last = now;
+        return;
+      }
       const dt = Math.min((now - last) / 1000, 0.05);
       last = now;
       real += dt;
@@ -473,6 +482,7 @@ export function Bloom({
     return () => {
       cancelAnimationFrame(raf);
       ro.disconnect();
+      io.disconnect();
       window.removeEventListener("pointermove", onMove);
       document.documentElement.removeEventListener("pointerleave", onLeave);
       geo.dispose();

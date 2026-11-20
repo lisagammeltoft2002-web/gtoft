@@ -186,8 +186,12 @@ export type CaseStudy = {
   problem: string[];
   role: string[];
   insight: { quote: string; note: string };
-  journey: { label: string; note: string }[];
-  decisions: { title: string; body: string }[];
+  /** four steps, each drawn as a dot sculpture (shape: a name from journeyShapes.ts) */
+  journey: { label: string; note: string; shape: string }[];
+  /** add `image: { src: "/images/work/…", alt: "…" }` to show a screenshot beside a decision */
+  decisions: { title: string; body: string; image?: { src: string; alt: string } }[];
+  /** a screenshot beside the problem (the "before") */
+  problemImage?: { src: string; alt: string };
   solution: { src: string; alt: string; caption: string }[];
   results: { value: string; label: string }[];
   reflection: string[];
@@ -233,7 +237,12 @@ export const caseStudies: CaseStudy[] = [
         "Good sales calls don’t start with features. They start with pain.",
       note: "What I learned from sitting with our sales team",
     },
-    journey: [],
+    journey: [
+      { label: "Listen to sales", note: "Sat in on calls to hear how our best sellers tell the story.", shape: "bubble" },
+      { label: "Problems first", note: "Turned that story into a page that opens with the pain admins know.", shape: "sections" },
+      { label: "Design and build", note: "A real design system in Webflow, built by me, component by component.", shape: "browser" },
+      { label: "One field", note: "The demo form went from five fields and a captcha to one email.", shape: "plane" },
+    ],
     decisions: [
       {
         title: "Built the story sales already tells",
@@ -339,7 +348,12 @@ export const caseStudies: CaseStudy[] = [
       quote: "The value isn’t the AI. It’s the Velory knowledge built into it.",
       note: "Templates, brand rules, portal views and security rules, all inside the tool",
     },
-    journey: [],
+    journey: [
+      { label: "One sentence", note: "You start from what you want to make, not from a blank page.", shape: "bubble" },
+      { label: "Brand built in", note: "Colours, logo rules and templates live inside the tool.", shape: "swatches" },
+      { label: "Many formats", note: "Banners, slides and films, each added because someone asked.", shape: "formats" },
+      { label: "The whole team", note: "Sales, marketing and product make on-brand work themselves.", shape: "people" },
+    ],
     decisions: [
       {
         title: "Start small, follow demand",
@@ -385,31 +399,48 @@ export const caseStudies: CaseStudy[] = [
       "In the Velory portal, admins no longer have to work out where money leaks. The portal spots it, like licences nobody uses, and suggests the next step. One click asks the people holding them in Slack or Teams, and every “not using it” becomes a cancelled licence and money saved.",
     meta: [
       { label: "Role", value: "The admin's journey: from insight to task to saving" },
-      { label: "Team", value: "Lorem ipsum" },
-      { label: "Timeline", value: "Lorem ipsum" },
+      /* DRAFT (written by Claude from what Lisa described): Team, Timeline, problem,
+         insight, decisions, results and reflection need her real facts. */
+      { label: "Team", value: "Me, with Velory’s product and development team" },
+      { label: "Timeline", value: "Part of the new portal, 2026" },
       { label: "Tools", value: "Figma" },
     ],
     problem: [
-      "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum id ligula porta felis euismod semper. Cras mattis consectetur purus sit amet fermentum.",
+      "Companies pay for software nobody opens any more. The data to find it was already in the portal, but admins had to go looking for it: export lists, compare logins, chase people one by one. Most never had the time, so the money kept leaking.",
+      "The brief: let the portal do the looking, and make acting on what it finds as easy as one click.",
     ],
     role: [],
     insight: {
-      quote: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
-      note: "lorem ipsum",
+      quote: "Admins don’t want more data. They want to know what to do next.",
+      note: "What came out of talking to the admins who use the portal",
     },
-    journey: [],
+    journey: [
+      { label: "Spot it", note: "The portal finds licences nobody has opened in 60 days.", shape: "magnifier" },
+      { label: "Tell the admin", note: "One notification, with the saving in kronor.", shape: "bell" },
+      { label: "Ask the people", note: "One click asks them in Slack or Teams.", shape: "bubbles" },
+      { label: "Save", note: "Every “not using it” becomes a cancelled licence.", shape: "coins" },
+    ],
     decisions: [
       {
-        title: "Lorem ipsum",
-        body: "Maecenas faucibus mollis interdum. Nullam quis risus eget urna mollis ornare vel eu leo.",
+        title: "The insight comes to you",
+        body: "The portal watches licence use in the background and sends one clear notification with the saving in kronor, so the value is obvious before anyone clicks.",
+      },
+      {
+        title: "Ask before you cancel",
+        body: "Usage data is a strong hint, not proof. One button asks the people holding the licence in Slack or Teams, where they already are, and their answers come back into the portal.",
+      },
+      {
+        title: "From insight to task to saving",
+        body: "Every insight becomes a task with a clear end: the “not using it” answers turn into cancelled licences, and the saving is counted for you.",
       },
     ],
     solution: [],
     results: [
-      { value: "00%", label: "lorem ipsum" },
-      { value: "0×", label: "dolor sit" },
+      { value: "1", label: "click to ask everyone" },
+      { value: "0", label: "lists to export" },
+      { value: "9 600 kr", label: "saved in this example" },
     ],
-    reflection: ["Lorem ipsum dolor sit amet, consectetur adipiscing elit."],
+    reflection: ["Good insights are the ones you can act on straight away. The work was less about finding the data and more about designing the next step."],
   },
 ];
 

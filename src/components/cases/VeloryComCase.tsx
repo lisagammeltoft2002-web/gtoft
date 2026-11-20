@@ -1,7 +1,7 @@
 "use client";
 
 import type { CaseCopy } from "@/content/site";
-import { CaseWords, Check, FilmStage, useFilm } from "./Film";
+import { CaseFrame, Check, useFilm } from "./Film";
 
 /* velory.com, as a short teaser: someone looks it up and the site scrolls by.
    A new browser tab, its search field empty. The cursor clicks it, types velory.com and
@@ -11,7 +11,7 @@ import { CaseWords, Check, FilmStage, useFilm } from "./Film";
 const SCROLL_END = 560;
 const FIELD = [300, 156]; // the new tab's search field, in the world
 
-export function VeloryComCase({ copy }: { copy: CaseCopy }) {
+export function VeloryComCase({ copy, hero = false }: { copy: CaseCopy; hero?: boolean }) {
   const { ref, handlers } = useFilm((k) => {
     const { tl, q } = k;
     // one camera for the whole film: the browser, filling the screen, its bar at the top
@@ -42,11 +42,10 @@ export function VeloryComCase({ copy }: { copy: CaseCopy }) {
     tl.to(q("[data-page]"), { y: -SCROLL_END, duration: 1.5, ease: "power2.inOut" }, 6.3);
     k.metric(7.9);
     tl.set({}, {}, 9.2);
-  });
+  }, { auto: hero });
 
   return (
-    <article ref={ref} className="lin-tile film" aria-label={`${copy.title}: ${copy.role}`} {...handlers}>
-      <FilmStage>
+    <CaseFrame slug="velory-com" copy={copy} hero={hero} frameRef={ref} handlers={handlers}>
         <div className="f-win" style={{ left: 20, top: 14, width: 560, height: 312 }}>
           {/* browser bar, full width at the top */}
           <div className="f-abs z-10 flex items-center gap-3 border-b border-[var(--f-line)] bg-[var(--f-soft)] px-3" style={{ left: 0, top: 0, width: 560, height: 36 }}>
@@ -184,8 +183,6 @@ export function VeloryComCase({ copy }: { copy: CaseCopy }) {
             </div>
           </div>
         </div>
-      </FilmStage>
-      <CaseWords copy={copy} />
-    </article>
+    </CaseFrame>
   );
 }

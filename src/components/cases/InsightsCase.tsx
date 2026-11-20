@@ -2,7 +2,7 @@
 
 import { useRef } from "react";
 import type { CaseCopy } from "@/content/site";
-import { CaseWords, Check, FilmStage, useFilm } from "./Film";
+import { CaseFrame, Check, useFilm } from "./Film";
 
 /* Actionable Insights, as a short teaser.
    Close on the bell's notification, "Save 14 400 kr a year". Review opens the insight: six
@@ -23,7 +23,7 @@ const ANSWER_ORDER = [1, 4, 0, 3, 2, 5];
 const REVIEW = [409, 140];
 const BTN = [112, 302];
 
-export function InsightsCase({ copy }: { copy: CaseCopy }) {
+export function InsightsCase({ copy, hero = false }: { copy: CaseCopy; hero?: boolean }) {
   const figure = useRef<HTMLSpanElement>(null);
   const saved = useRef<HTMLSpanElement>(null);
 
@@ -92,11 +92,10 @@ export function InsightsCase({ copy }: { copy: CaseCopy }) {
       money.v = 0;
       render();
     };
-  });
+  }, { auto: hero });
 
   return (
-    <article ref={ref} className="lin-tile film" aria-label={`${copy.title}: ${copy.role}`} {...handlers}>
-      <FilmStage>
+    <CaseFrame slug="actionable-insights" copy={copy} hero={hero} frameRef={ref} handlers={handlers} figureRef={figure}>
         <div className="f-win" style={{ left: 20, top: 14, width: 560, height: 312 }}>
           {/* top bar */}
           <div className="f-abs flex items-center border-b border-[var(--f-line)] px-5" style={{ left: 0, top: 0, width: 560, height: 40 }}>
@@ -194,9 +193,7 @@ export function InsightsCase({ copy }: { copy: CaseCopy }) {
             </span>
           </div>
         </div>
-      </FilmStage>
-      <CaseWords copy={copy} figureRef={figure} />
-    </article>
+    </CaseFrame>
   );
 }
 

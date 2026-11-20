@@ -1,7 +1,7 @@
 "use client";
 
 import type { CaseCopy } from "@/content/site";
-import { CaseWords, Check, FilmStage, useFilm } from "./Film";
+import { CaseFrame, Check, useFilm } from "./Film";
 
 /* Velory Studio, as a product video.
    Close on the composer: a prompt types itself, the @Brand kit tag snaps in. The cursor
@@ -16,7 +16,7 @@ const PROMPT = "Create a LinkedIn banner for our spring webinar, Offboarding wit
 const SEND = [222, 291];
 const LINKEDIN = [500, 255];
 
-export function StudioCase({ copy }: { copy: CaseCopy }) {
+export function StudioCase({ copy, hero = false }: { copy: CaseCopy; hero?: boolean }) {
   const { ref, handlers } = useFilm((k) => {
     const { tl } = k;
     k.start(140, 256, 2.0);
@@ -71,11 +71,10 @@ export function StudioCase({ copy }: { copy: CaseCopy }) {
     tl.to(k.q("[data-cursor]"), { autoAlpha: 0, duration: 0.3 }, 11.7);
     k.metric(12.1);
     tl.set({}, {}, 12.8);
-  });
+  }, { auto: hero });
 
   return (
-    <article ref={ref} className="lin-tile film" aria-label={`${copy.title}: ${copy.role}`} {...handlers}>
-      <FilmStage>
+    <CaseFrame slug="velory-studio" copy={copy} hero={hero} frameRef={ref} handlers={handlers}>
         <div className="f-win" style={{ left: 20, top: 14, width: 560, height: 312 }}>
           {/* chat */}
           <div className="f-abs border-r border-[var(--f-line)]" style={{ left: 0, top: 0, width: 236, height: 312 }}>
@@ -168,9 +167,7 @@ export function StudioCase({ copy }: { copy: CaseCopy }) {
             </div>
           </div>
         </div>
-      </FilmStage>
-      <CaseWords copy={copy} />
-    </article>
+    </CaseFrame>
   );
 }
 

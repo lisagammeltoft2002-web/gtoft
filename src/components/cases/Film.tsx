@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { useEffect, useRef, useState, ViewTransition } from "react";
 import gsap from "gsap";
 import { TextPlugin } from "gsap/TextPlugin";
 import type { CaseCopy } from "@/content/site";
@@ -63,7 +64,8 @@ function rewind(tl: gsap.core.Timeline, fade: HTMLElement, metric: HTMLElement |
 
 /* ------------------------------------------------------------------ one film */
 
-export function useFilm(build: (k: Kit) => (() => void) | void) {
+/** auto: the film plays by itself and loops (the case page hero); otherwise it plays while pointed at */
+export function useFilm(build: (k: Kit) => (() => void) | void, { auto = false }: { auto?: boolean } = {}) {
   const ref = useRef<HTMLElement>(null);
   const ctl = useRef<{ play: () => void; stop: () => void } | null>(null);
   const playing = useRef(false);
@@ -164,7 +166,8 @@ export function useFilm(build: (k: Kit) => (() => void) | void) {
           tl.to(q(selector), { autoAlpha: 0, duration: dur, ease: "none" }, at);
         },
         metric: (at) => {
-          tl.fromTo(q("[data-metric]"), { autoAlpha: 0, y: 6 }, { autoAlpha: 1, y: 0, duration: 0.5 }, at);
+          const m = q("[data-metric]");
+          if (m.length) tl.fromTo(m, { autoAlpha: 0, y: 6 }, { autoAlpha: 1, y: 0, duration: 0.5 }, at);
         },
       };
 
@@ -179,6 +182,18 @@ export function useFilm(build: (k: Kit) => (() => void) | void) {
         tl.progress(1);
         gsap.set(cur, { autoAlpha: 0 });
         return;
+      }
+
+      if (auto) {
+        // the hero: start once the page has settled, rest on the last frame, then go again
+        let wait = gsap.delayedCall(0.9, () => tl.play(0));
+        tl.eventCallback("onComplete", () => {
+          wait = gsap.delayedCall(2.4, () => {
+            fades = rewind(tl, stage, metricEl, reset);
+            wait = gsap.delayedCall(0.5, () => tl.play(0));
+          });
+        });
+        void wait;
       }
 
       let fades: gsap.core.Tween[] = [];
@@ -268,8 +283,9 @@ function Cursor() {
   );
 }
 
-/* the words, bottom left: the name and one line; the number shows at the end of the film */
-export function CaseWords({ copy, figureRef }: { copy: CaseCopy; figureRef?: React.Ref<HTMLSpanElement> }) {
+/* the words, bottom left: the name and one line. Bottom right: the number (at the end of the
+   film) and the yellow way in to the case */
+export function CaseWords({ copy, slug, figureRef }: { copy: CaseCopy; slug: string; figureRef?: React.Ref<HTMLSpanElement> }) {
   const m = copy.metrics[0];
   return (
     <div className="lin-words">
@@ -277,17 +293,58 @@ export function CaseWords({ copy, figureRef }: { copy: CaseCopy; figureRef?: Rea
         <p className="lin-title">{copy.title}</p>
         <p className="lin-line">{copy.role}</p>
       </div>
-      <p className="lin-metric" data-metric="">
-        <span className="lin-figure" ref={figureRef}>
-          {m.figure}
-        </span>
-        <span className="lin-line">{m.label}</span>
-      </p>
+      <div className="flex items-end gap-4">
+        <p className="lin-metric" data-metric="">
+          <span className="lin-figure" ref={figureRef}>
+            {m.figure}
+          </span>
+          <span className="lin-line">{m.label}</span>
+        </p>
+        <Link href={`/work/${slug}`} transitionTypes={["nav-forward"]} className="case-cta" aria-label={`Read the ${copy.title} case`}>
+          <Arrow />
+        </Link>
+      </div>
     </div>
   );
 }
 
-/* a small tick for buttons and status chips */
+export function Arrow({ back = false }: { back?: boolean }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" style={back ? { transform: "scaleX(-1)" } : undefined}>
+      <path d="M3 8h10M8.5 3.5 13 8l-4.5 4.5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/* one case, either as its tile on the home page or as the hero of its own page. Both carry
+   the same view-transition name, so going in, the tile grows into the hero (and back out). */
+export function CaseFrame({
+  slug,
+  copy,
+  hero,
+  frameRef,
+  handlers,
+  figureRef,
+  children,
+}: {
+  slug: string;
+  copy: CaseCopy;
+  hero?: boolean;
+  frameRef: React.Ref<HTMLElement>;
+  handlers: Record<string, unknown>;
+  figureRef?: React.Ref<HTMLSpanElement>;
+  children: React.ReactNode;
+}) {
+  return (
+    <ViewTransition name={`case-${slug}`} share="case-morph" default="none">
+      <article ref={frameRef} className={`lin-tile film ${hero ? "case-hero" : ""}`} aria-label={`${copy.title}: ${copy.role}`} {...(hero ? {} : handlers)}>
+        <FilmStage>{children}</FilmStage>
+        {!hero && <CaseWords copy={copy} slug={slug} figureRef={figureRef} />}
+      </article>
+    </ViewTransition>
+  );
+}
+
 export function Check() {
   return (
     <svg width="9" height="9" viewBox="0 0 10 10" aria-hidden="true">
