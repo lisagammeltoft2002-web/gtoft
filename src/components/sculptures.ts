@@ -543,3 +543,57 @@ export const NAMES = ["pottery", "crochet", "painting", "sewing", "rug tufting"]
 export function buildHobbies(n: number): Build[] {
   return [pottery(n), crochet(n), painting(n), sewing(n), rugTufting(n)];
 }
+
+/* ------------------------------------------------------------------ paper plane (contact) */
+
+/* a paper plane that folds itself: the sheet appears from the nose back as one closed dart
+   (keel and both wings standing up together), then the wings fold out, one a beat after the
+   other, to a slight V. Nose along +x. Dots crowd the creases and the leading edges. */
+export function paperPlane(N: number): Build {
+  const NOSE = [8.25, 0.6, 0], TAIL = [-8.25, 0.6, 0], KEEL = [-8.25, -2.6, 0], SPAN = 6.4;
+  const OPEN = 1.42; // how far the wings fold out (radians from standing up)
+  const nKeel = Math.round(N * 0.22);
+  // each dot: which part (0 keel, -1 / 1 wings), and where on that triangle (u along, v across)
+  const side = new Int8Array(N), U = new Float32Array(N), V = new Float32Array(N), key = new Float32Array(N);
+  for (let i = 0; i < N; i++) {
+    side[i] = i < nKeel ? 0 : i % 2 ? 1 : -1;
+    let u = Math.random(), v = Math.random();
+    if (u + v > 1) {
+      u = 1 - u;
+      v = 1 - v;
+    }
+    const e = Math.random();
+    if (e < 0.12) v = Math.abs(gauss()) * 0.012; // the crease along the spine
+    else if (e < 0.2) u = Math.abs(gauss()) * 0.012; // the leading edge
+    else if (e < 0.25) u = 1 - v - Math.abs(gauss()) * 0.012; // the back edge
+    U[i] = u;
+    V[i] = v;
+    key[i] = u + v * 0.35; // the sheet appears from the nose back
+  }
+  return {
+    name: "paper plane",
+    seconds: 4.2,
+    view: 0.26,
+    spin: true,
+    update(t, pos, show) {
+      const fold = (s: number) => ease(clamp01((t - (s > 0 ? 0.42 : 0.52)) / 0.4)) * OPEN;
+      const fR = fold(1), fL = fold(-1);
+      for (let i = 0; i < N; i++) {
+        const u = U[i], v = V[i], s = side[i], a = u + v;
+        let x = NOSE[0] + (TAIL[0] - NOSE[0]) * a, y = NOSE[1] + (TAIL[1] - NOSE[1]) * a, z = 0;
+        if (s === 0) {
+          x += (KEEL[0] - TAIL[0]) * v;
+          y += (KEEL[1] - TAIL[1]) * v;
+        } else {
+          const f = s > 0 ? fR : fL;
+          y += Math.cos(f) * SPAN * v;
+          z += s * Math.sin(f) * SPAN * v;
+        }
+        pos[i * 3] = x;
+        pos[i * 3 + 1] = y;
+        pos[i * 3 + 2] = z;
+        show[i] = reveal(t / 0.55, key[i]);
+      }
+    },
+  };
+}

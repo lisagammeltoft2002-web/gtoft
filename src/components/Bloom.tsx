@@ -16,7 +16,6 @@ import { routes, type Box, type Ctx, type Route } from "./transitions";
    Hovering scatters the dots, and a spring pulls them back. */
 
 const COLOR = [0x5b / 255, 0x8b / 255, 0xd0 / 255]; // the sky blue of the headline
-const DOTS = 20000;
 const DOT_PX = 1.1; // dot size in CSS pixels (front dots a little bigger, back ones smaller)
 const ALPHA = 0.62;
 const BACK_ALPHA = 0.22; // how faint the furthest dots get, as a share of the nearest
@@ -36,7 +35,6 @@ const HOVER_PUSH = 200; // px/s added per frame at the cursor's centre
 const BACK_K = 25; // the spring that pulls pushed dots home
 const BACK_D = 9;
 const MARGIN_X = 8; // px kept clear at the sides of the rectangle
-const MARGIN_Y = 64; // px kept clear at the top and bottom, for the captions (up to two lines)
 const NEAR_GROW = 1.12; // allowance for the nearest dots looking bigger
 
 const smooth = (v: number) => {
@@ -79,7 +77,18 @@ const fragment = /* glsl */ `
   }
 `;
 
-export function Bloom({ onShape }: { onShape?: (index: number) => void } = {}) {
+const HOBBIES_LABEL =
+  "3D sculptures made of blue dots that build themselves, each unravelling into a spiralling thread that winds into the next: a vase thrown on the wheel, a crocheted beanie, a sunflower painted on an easel, a dress draped onto a dress form, and a tufted rug";
+
+/* the same engine draws other sculptures too (the paper plane in the contact rectangle):
+   pass its builds, how many dots, and how much room to keep clear above and below */
+export function Bloom({
+  onShape,
+  make = buildHobbies,
+  dots: DOTS = 20000,
+  marginY: MARGIN_Y = 64,
+  label = HOBBIES_LABEL,
+}: { onShape?: (index: number) => void; make?: (n: number) => Build[]; dots?: number; marginY?: number; label?: string } = {}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const onShapeRef = useRef(onShape);
   useEffect(() => {
@@ -91,7 +100,7 @@ export function Bloom({ onShape }: { onShape?: (index: number) => void } = {}) {
     if (!canvas) return;
     const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    const builds = buildHobbies(DOTS);
+    const builds = make(DOTS);
     const count = builds.length;
 
     /* per-dot data. A "slot" is one dot on screen; slotIdx says which of the current
@@ -467,13 +476,15 @@ export function Bloom({ onShape }: { onShape?: (index: number) => void } = {}) {
       mat.dispose();
       renderer.dispose();
     };
+    // set up once: the sculpture and its size don't change while it's on the page
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
     <canvas
       ref={canvasRef}
       role="img"
-      aria-label="3D sculptures made of blue dots that build themselves, each unravelling into a spiralling thread that winds into the next: a vase thrown on the wheel, a crocheted beanie, a sunflower painted on an easel, a dress draped onto a dress form, and a tufted rug"
+      aria-label={label}
       className="relative block h-full w-full"
     />
   );

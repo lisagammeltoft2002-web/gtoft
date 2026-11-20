@@ -1,9 +1,13 @@
 "use client";
 
-import { DotPlane } from "./DotPlane";
+import { Bloom } from "../Bloom";
+import { paperPlane } from "../sculptures";
+
+const plane = (n: number) => [paperPlane(n)];
 
 /* The way to reach Lisa: the only yellow on the page, so the eye ends here. A paper plane
-   made the hobbies' way (a 3D sculpture of tiny sky-blue dots) flies and takes off when you point at a link,
+   drawn by the hobbies' own engine (Bloom: tiny sky-blue dots that build themselves, turn,
+   lean toward the cursor and scatter when you point at them) folds itself again and again,
    then one warm line and email, LinkedIn and the CV as big, easy links (44px tall).
    (The addresses come from site.ts.) */
 
@@ -21,8 +25,8 @@ export function ContactTile({ title, email, linkedin, cv }: { title: string; ema
       <div className="tile-grid">
         <span aria-hidden="true" />
         <div className="tile-stage">
-          <div className="contact-plane h-full max-h-[170px] w-full">
-            <DotPlane label="A paper plane, flying" />
+          <div className="contact-plane h-full max-h-[210px] w-full">
+            <Bloom make={plane} dots={3800} marginY={6} label="A paper plane made of tiny blue dots that folds itself, turns, and unfolds again" />
           </div>
         </div>
         <div className="tile-foot pointer-events-auto">

@@ -51,7 +51,7 @@ export const board = {
     "velory-com": {
       title: "velory.com",
       role: "A fresher landing page, same brand.",
-      metrics: [{ figure: "4 mo", label: "research to live site" }],
+      metrics: [{ figure: "1 field", label: "to book a demo, was 5" }],
     },
     "velory-studio": {
       title: "Velory Studio",
