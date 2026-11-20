@@ -1,19 +1,77 @@
 "use client";
 
+import { useEffect, useRef } from "react";
+import gsap from "gsap";
 import type { CaseCopy } from "@/content/site";
-import { CaseFrame, Check, useFilm } from "./Film";
+import { CaseFrame, useFilm } from "./Film";
 
-/* velory.com, as a short teaser: someone looks it up and the site scrolls by.
-   A new browser tab, its search field empty. The cursor clicks it, types velory.com and
-   presses enter; the site loads and scrolls from the problem-first hero, past the proof and
-   the platform, to "Try it". The browser bar stays at the top the whole time. */
+/* velory.com, before and after. A new browser tab, its search field empty. The cursor clicks
+   it, types velory.com and presses enter; the OLD site loads, then a line sweeps in from the
+   right to wherever your arrow is and from then on follows it, pixel by pixel. Left of the
+   line is the old velory.com, right of it the new one: arrow fully right = all old, fully
+   left = all new. On the case page hero, the line drifts by itself until you point at it. */
 
-const SCROLL_END = 560;
 const FIELD = [300, 156]; // the new tab's search field, in the world
 
+type Split = {
+  /** where the arrow is, 0–100 across the site */
+  target: number;
+  /** the line follows the arrow (after the sweep) */
+  follow: boolean;
+  /** an arrow is over the tile */
+  over: boolean;
+  move: (to: number) => void;
+  idle: () => void;
+};
+
 export function VeloryComCase({ copy, hero = false }: { copy: CaseCopy; hero?: boolean }) {
+  const split = useRef<Split>({ target: 50, follow: false, over: false, move: () => {}, idle: () => {} });
+
   const { ref, handlers } = useFilm((k) => {
     const { tl, q } = k;
+    const st = split.current;
+    const site = q("[data-site]")[0] as HTMLElement;
+    const before = q("[data-before]")[0] as HTMLElement;
+    const after = q("[data-after]")[0] as HTMLElement;
+    const film = q("[data-new]")[0] as HTMLVideoElement;
+    const line = { s: 100 };
+    const draw = () => {
+      site.style.setProperty("--split", `${line.s}%`);
+      before.style.opacity = String(Math.min(1, line.s / 18));
+      after.style.opacity = String(Math.min(1, (100 - line.s) / 18));
+    };
+    const glide = gsap.quickTo(line, "s", { duration: 0.18, ease: "power3.out", onUpdate: draw });
+    let sweep: gsap.core.Tween | null = null;
+    let drift: gsap.core.Timeline | null = null;
+    const still = () => {
+      sweep?.kill();
+      drift?.kill();
+      glide.tween.kill();
+    };
+    // the hero, with nobody pointing: the line wanders slowly between the two sites
+    const wander = () => {
+      drift?.kill();
+      drift = gsap
+        .timeline({ repeat: -1, defaults: { ease: "sine.inOut", onUpdate: draw } })
+        .to(line, { s: 70, duration: 2.6 })
+        .to(line, { s: 30, duration: 4 })
+        .to(line, { s: 50, duration: 2 });
+    };
+    const live = (on: boolean) => {
+      st.follow = on;
+      site.classList.toggle("is-live", on);
+    };
+    st.move = (to) => {
+      st.target = to;
+      if (!st.follow) return;
+      drift?.kill();
+      glide(to);
+    };
+    st.idle = () => {
+      if (hero && st.follow) wander();
+    };
+    draw();
+
     // one camera for the whole film: the browser, filling the screen, its bar at the top
     k.start(300, 0, 1);
     k.cursorStart(420, 250);
@@ -27,7 +85,7 @@ export function VeloryComCase({ copy, hero = false }: { copy: CaseCopy; hero?: b
     tl.fromTo(q("[data-caret]"), { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.01 }, 1.2);
     k.type("[data-url]", "velory.com", 1.35, 0.7);
 
-    // 2. enter: the site loads
+    // 2. enter: the old site loads
     k.hide("[data-caret]", 2.2, 0.01);
     tl.to(q("[data-cursor]"), { autoAlpha: 0, duration: 0.3 }, 2.25);
     tl.fromTo(q("[data-load]"), { scaleX: 0, autoAlpha: 1 }, { scaleX: 1, duration: 0.6, ease: "power2.inOut" }, 2.2).to(q("[data-load]"), { autoAlpha: 0, duration: 0.2 }, 2.8);
@@ -35,14 +93,67 @@ export function VeloryComCase({ copy, hero = false }: { copy: CaseCopy; hero?: b
     k.cam(300, 0, 1, 2.1, 1.0);
     k.hide("[data-newtab]", 2.3, 0.25);
     k.show("[data-site]", 2.5, { y: 8, duration: 0.6 });
-    tl.fromTo(q("[data-check]"), { autoAlpha: 0, scale: 0.5 }, { autoAlpha: 1, scale: 1, duration: 0.3, stagger: 0.15, ease: "back.out(2.5)", immediateRender: false }, 3.0);
+    tl.call(() => void film.play().catch(() => {}), undefined, 2.4);
 
-    // 3. the whole site scrolls by, with a breath at each part
-    tl.to(q("[data-page]"), { y: -270, duration: 1.5, ease: "power2.inOut" }, 4.2);
-    tl.to(q("[data-page]"), { y: -SCROLL_END, duration: 1.5, ease: "power2.inOut" }, 6.3);
-    k.done(7.9);
-    tl.set({}, {}, 9.2);
+    // 3. the line sweeps in from the right to the arrow, then follows it
+    tl.call(
+      () => {
+        still();
+        const to = hero && !st.over ? 50 : st.target;
+        sweep = gsap.to(line, {
+          s: to,
+          duration: 0.9,
+          ease: "power3.out",
+          onUpdate: draw,
+          onComplete: () => {
+            live(true);
+            if (st.over) glide(st.target);
+            else st.idle();
+          },
+        });
+      },
+      undefined,
+      3.0,
+    );
+    k.done(3.9);
+    tl.set({}, {}, hero ? 12 : 4.6);
+
+    // back to the first frame: the old site whole, the line waiting at the right edge
+    return () => {
+      still();
+      live(false);
+      film.pause();
+      film.currentTime = 0;
+      line.s = 100;
+      draw();
+    };
   }, { auto: hero });
+
+  /* your arrow, measured against the site as it is drawn (the camera's zoom included) */
+  useEffect(() => {
+    const root = ref.current;
+    if (!root) return;
+    const st = split.current;
+    const site = root.querySelector<HTMLElement>("[data-site]");
+    const move = (e: PointerEvent) => {
+      if (!site || (e.pointerType !== "mouse" && e.buttons === 0)) return;
+      const r = site.getBoundingClientRect();
+      if (!r.width) return;
+      st.over = true;
+      st.move(Math.min(100, Math.max(0, ((e.clientX - r.left) / r.width) * 100)));
+    };
+    const leave = (e: PointerEvent) => {
+      if (e.pointerType !== "mouse") return;
+      st.over = false;
+      st.idle();
+    };
+    root.addEventListener("pointermove", move);
+    root.addEventListener("pointerleave", leave);
+    return () => {
+      root.removeEventListener("pointermove", move);
+      root.removeEventListener("pointerleave", leave);
+    };
+  }, [ref]);
 
   return (
     <CaseFrame slug="velory-com" copy={copy} hero={hero} frameRef={ref} handlers={handlers}>
@@ -87,100 +198,29 @@ export function VeloryComCase({ copy, hero = false }: { copy: CaseCopy; hero?: b
             </span>
           </div>
 
-          {/* the page, scrolled by the film */}
-          <div data-site="" className="f-abs f-hidden overflow-hidden" style={{ left: 0, top: 36, width: 560, height: 276 }}>
-            <div data-page="" className="f-abs" style={{ left: 0, top: 0, width: 560, height: 842 }}>
-              {/* nav */}
-              <div className="f-abs flex items-center" style={{ left: 24, top: 0, right: 24, height: 40 }}>
-                <span className="f-serif text-[16px] text-[color:var(--f-accent-deep)]">velory</span>
-                <span className="f-grey ml-10 flex gap-5 text-[9.5px]">
-                  <span>Product</span>
-                  <span>Customers</span>
-                  <span>Pricing</span>
-                </span>
-                <span className="f-btn ml-auto" style={{ height: 22 }}>
-                  Book a demo
-                </span>
-              </div>
-
-              {/* hero */}
-              <p className="f-abs m-0 text-[8px] font-semibold tracking-[0.14em] text-[color:var(--f-accent)]" style={{ left: 24, top: 66 }}>
-                IT LIFECYCLE FOR GROWING TEAMS
-              </p>
-              <p className="f-serif f-abs m-0 text-[31px] leading-[1.04] text-[color:var(--f-accent-deep)]" style={{ left: 24, top: 84, width: 290 }}>
-                Someone left.
-                <br />
-                Licences stayed.
-              </p>
-              <p className="f-grey f-abs m-0 text-[10px] leading-[1.45]" style={{ left: 24, top: 160, width: 250 }}>
-                Velory finds every laptop, licence and login when people join, move or leave, and takes care of it.
-              </p>
-              <div className="f-abs flex gap-2" style={{ left: 24, top: 206 }}>
-                <span className="f-btn" style={{ height: 26, padding: "0 14px" }}>
-                  See how
-                </span>
-                <span className="f-btn f-ghost" style={{ height: 26, padding: "0 14px" }}>
-                  Book a demo
-                </span>
-              </div>
-              <div className="f-abs rounded-[12px] border border-[var(--f-line)] bg-white p-3 shadow-[0_14px_30px_-20px_rgb(20_40_90/0.22)]" style={{ left: 322, top: 62, width: 214, height: 176 }}>
-                <p className="m-0 text-[10px] font-semibold">Offboarding · Anna Berg</p>
-                <p className="f-grey m-0 mt-0.5 text-[8.5px]">Last day Friday · 4 of 4 done</p>
-                {["MacBook Pro · return booked", "Figma · licence cancelled", "Slack · access removed", "Google · account archived"].map((t) => (
-                  <div key={t} className="mt-2 flex items-center gap-2 rounded-[7px] bg-[var(--f-soft)] px-2 text-[9px]" style={{ height: 24 }}>
-                    <span data-check="" className="grid h-[13px] w-[13px] place-items-center rounded-full bg-[var(--f-green)] text-white">
-                      <Check />
-                    </span>
-                    {t}
-                  </div>
-                ))}
-              </div>
-
-              {/* proof */}
-              <p className="f-grey f-abs m-0 w-full text-center text-[9.5px]" style={{ left: 0, top: 296 }}>
-                Trusted by IT teams across the Nordics
-              </p>
-              <div className="f-abs flex w-full justify-center gap-9 text-[13px] font-semibold tracking-[-0.02em] text-[#b6bdcb]" style={{ left: 0, top: 322 }}>
-                <span>Northwind</span>
-                <span className="f-serif">Fjordly</span>
-                <span>KANTO</span>
-                <span className="f-serif">lumen</span>
-                <span>brisk.</span>
-              </div>
-
-              {/* platform */}
-              <p className="f-serif f-abs m-0 w-full text-center text-[19px] text-[color:var(--f-accent-deep)]" style={{ left: 0, top: 388 }}>
-                One place for every join, move and leave
-              </p>
-              {[
-                ["Join", "Laptop, apps and access ready on day one."],
-                ["Move", "New team, new tools. Old ones cleaned up."],
-                ["Leave", "Hardware back, licences cancelled, nothing left open."],
-              ].map(([h, t], i) => (
-                <div key={h} className="f-abs rounded-[12px] border border-[var(--f-line)] p-3" style={{ left: 24 + i * 174, top: 430, width: 164, height: 96 }}>
-                  <span className="grid h-[22px] w-[22px] place-items-center rounded-[7px] bg-[var(--f-accent-wash)] text-[10px] font-semibold text-[color:var(--f-accent)]">{i + 1}</span>
-                  <p className="m-0 mt-2 text-[11px] font-semibold">{h}</p>
-                  <p className="f-grey m-0 mt-0.5 text-[9px] leading-snug">{t}</p>
-                </div>
-              ))}
-
-              {/* try it */}
-              <div className="f-abs bg-[var(--f-accent-wash)]" style={{ left: 0, top: 560, width: 560, height: 282 }} />
-              <p className="f-serif f-abs m-0 w-full text-center text-[24px] text-[color:var(--f-accent-deep)]" style={{ left: 0, top: 628 }}>
-                See it on your own setup
-              </p>
-              <p className="f-grey f-abs m-0 w-full text-center text-[10px]" style={{ left: 0, top: 666 }}>
-                One field. We’ll do the rest.
-              </p>
-              <div className="f-abs flex items-center rounded-full bg-white pl-4 pr-1 shadow-[0_0_0_1px_var(--f-line),0_6px_18px_-8px_rgb(20_40_90/0.25)]" style={{ left: 150, top: 698, width: 260, height: 34 }}>
-                <span className="f-faint flex-1 text-[10.5px]">Work email</span>
-                <span className="f-round" style={{ width: 26, height: 26 }}>
-                  <svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true">
-                    <path d="M2 6h7.8M6.4 2.5 9.9 6l-3.5 3.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </span>
-              </div>
-            </div>
+          {/* the site: the old velory.com and the new one on top of each other, split by a
+              line that follows your arrow. Left of the line is the old site, right is the new. */}
+          <div data-site="" className="f-abs f-hidden f-split overflow-hidden" style={{ left: 0, top: 36, width: 560, height: 276 }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/images/work/velory-com/split-old.webp" alt="The old velory.com" className="f-split-img" draggable={false} />
+            {/* the new site plays, its hero film running, like the real page */}
+            <video data-new="" className="f-split-img f-split-new" poster="/images/work/velory-com/split-new.webp" muted loop playsInline preload="metadata" aria-label="The new velory.com">
+              <source src="/images/work/velory-com/split-new.webm" type="video/webm" />
+              <source src="/images/work/velory-com/split-new.mp4" type="video/mp4" />
+            </video>
+            <span data-before="" className="f-split-pill" style={{ left: 10 }}>
+              Before
+            </span>
+            <span data-after="" className="f-split-pill" style={{ right: 10 }}>
+              After
+            </span>
+            <span className="f-split-line" aria-hidden="true">
+              <span className="f-split-knob">
+                <svg width="12" height="8" viewBox="0 0 12 8" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3.5 1 .8 4l2.7 3M8.5 1 11.2 4 8.5 7" />
+                </svg>
+              </span>
+            </span>
           </div>
         </div>
     </CaseFrame>

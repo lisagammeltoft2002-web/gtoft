@@ -4,10 +4,12 @@ import { ViewTransition } from "react";
 import { Arrow } from "@/components/cases/Film";
 import { Journey } from "./Journey";
 import { BackHome } from "./BackHome";
+import { HoverVideo } from "./HoverVideo";
+import { ThemePair } from "./ThemePair";
 import { VeloryComCase } from "@/components/cases/VeloryComCase";
 import { StudioCase } from "@/components/cases/StudioCase";
 import { InsightsCase } from "@/components/cases/InsightsCase";
-import { board, caseStudies } from "@/content/site";
+import { board, caseStudies, type CaseMedia, type ImageSystem } from "@/content/site";
 
 /* A case study's own page: the home page tile, opened. Going in, the blue tile grows until it
    fills the window, its video, name and number staying where they were; the whole page is
@@ -66,6 +68,17 @@ export function CasePage({ slug }: { slug: string }) {
               </div>
               <Media image={c.problemImage} hint="Before: the old version" />
             </div>
+            {c.problemStrip && (
+              <ul className="case-pains" aria-label="The five pains the new page opens with">
+                {c.problemStrip.map((p) => (
+                  <li key={p.src} className="case-pain">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={p.src} alt="" loading="lazy" />
+                    <span>“{p.quote.replace(/\.$/, "")}”</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </section>
 
           <figure className="case-card case-quote">
@@ -95,6 +108,8 @@ export function CasePage({ slug }: { slug: string }) {
               ))}
             </div>
           </section>
+
+          {c.imageSystem && <ImageSystemSection s={c.imageSystem} />}
 
           <section className="case-section">
             <SectionHead eyebrow="Results" title="What it changed" />
@@ -143,12 +158,77 @@ function SectionHead({ eyebrow, title }: { eyebrow: string; title: string }) {
   );
 }
 
+/* How the velory.com images were made: what they are, how they're made, both themes, the
+   close-ups, the films and the numbers. */
+function ImageSystemSection({ s }: { s: ImageSystem }) {
+  return (
+    <section className="case-section" aria-labelledby="images-title">
+      <header className="case-section-head">
+        <p className="case-eyebrow">The images</p>
+        <h2 className="case-h2" id="images-title">How the images are made</h2>
+      </header>
+      <div className="case-stack">
+        <div className="case-split">
+          <div className="case-card tone-paper case-text">
+            <p className="case-p case-p-big">{s.lead}</p>
+            <p className="case-p">{s.why}</p>
+          </div>
+          <ThemePair {...s.pair} />
+        </div>
+
+        <ol className="case-recipe">
+          {s.steps.map((st, i) => (
+            <li key={st.title} className="case-card tone-paper">
+              <span className="case-num">{String(i + 1).padStart(2, "0")}</span>
+              <h3>{st.title}</h3>
+              <p>{st.body}</p>
+            </li>
+          ))}
+        </ol>
+
+        <ul className="case-closeups" aria-label="Close-ups from the feature scroll">
+          {s.closeUps.map((x) => (
+            <li key={x.src}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={x.src} alt={`Product close-up: ${x.label}`} loading="lazy" />
+              <span className="t-label">{x.label}</span>
+            </li>
+          ))}
+        </ul>
+
+        <div className="case-films">
+          {s.films.map((f) => (
+            <HoverVideo key={f.src} {...f} />
+          ))}
+        </div>
+
+        <div className="case-results">
+          {s.stats.map((r) => (
+            <div key={r.label} className="case-card case-result">
+              <span className="case-figure">{r.value}</span>
+              <span className="t-label">{r.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /* a screenshot in a home-page container; until Lisa adds one, a calm placeholder that says
-   what belongs there */
-function Media({ image, hint }: { image?: { src: string; alt: string }; hint: string }) {
+   what belongs there. Page screenshots ("shot") sit framed on light blue, product stills on white. */
+function Media({ image, hint }: { image?: CaseMedia; hint: string }) {
+  if (image?.kind === "shot")
+    return (
+      <figure className="case-media case-media-shot">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={image.src} alt={image.alt} loading="lazy" />
+        {image.caption && <figcaption className="t-label">{image.caption}</figcaption>}
+      </figure>
+    );
   if (image)
     return (
-      <div className="case-media">
+      <div className={`case-media ${image.kind === "still" ? "case-media-still" : ""}`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={image.src} alt={image.alt} />
       </div>

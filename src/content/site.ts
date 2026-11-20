@@ -189,13 +189,40 @@ export type CaseStudy = {
   /** four steps, each drawn as a dot sculpture (shape: a name from journeyShapes.ts) */
   journey: { label: string; note: string; shape: string }[];
   /** add `image: { src: "/images/work/…", alt: "…" }` to show a screenshot beside a decision */
-  decisions: { title: string; body: string; image?: { src: string; alt: string } }[];
+  decisions: { title: string; body: string; image?: CaseMedia }[];
   /** a screenshot beside the problem (the "before") */
-  problemImage?: { src: string; alt: string };
+  problemImage?: CaseMedia;
+  /** small drawings under the problem, one per pain (velory.com) */
+  problemStrip?: { src: string; quote: string }[];
+  /** how the case's images were made (velory.com) */
+  imageSystem?: ImageSystem;
   solution: { src: string; alt: string; caption: string }[];
   results: { value: string; label: string }[];
   reflection: string[];
 };
+
+/** an image beside a text card. "shot" = a page screenshot framed on blue,
+    "still" = a transparent product close-up on white; a video plays on hover. */
+export type CaseMedia = {
+  src: string;
+  alt: string;
+  kind?: "shot" | "still";
+  caption?: string;
+  video?: string;
+};
+
+export type ImageSystem = {
+  lead: string;
+  why: string;
+  steps: { title: string; body: string }[];
+  pair: { light: string; dark: string; alt: string };
+  closeUps: { src: string; label: string }[];
+  /** start = the resting frame (seconds), the same frame as the poster */
+  films: { src: string; poster: string; label: string; start?: number }[];
+  stats: { value: string; label: string }[];
+};
+
+const V = "/images/work/velory-com";
 
 /* Each case study, shortened to what a hiring lead reads: the problem,
    what I did, the numbers and what I learned. Add a real screenshot with
@@ -243,28 +270,105 @@ export const caseStudies: CaseStudy[] = [
       { label: "Design and build", note: "A real design system in Webflow, built by me, component by component.", shape: "browser" },
       { label: "One field", note: "The demo form went from five fields and a captcha to one email.", shape: "plane" },
     ],
+    problemImage: {
+      src: `${V}/before-hero.webp`,
+      alt: "The old velory.com: a laptop with the portal on the left, the headline on the right, a pastel wave below",
+      kind: "shot",
+      caption: "Before · velory.com",
+    },
+    problemStrip: [
+      { src: `${V}/problem-1.webp`, quote: "I can’t say what IT actually costs." },
+      { src: `${V}/problem-2.webp`, quote: "I set up every new starter by hand." },
+      { src: `${V}/problem-3.webp`, quote: "I lose track of what leavers had." },
+      { src: `${V}/problem-4.webp`, quote: "Every audit costs me a full day." },
+      { src: `${V}/problem-5.webp`, quote: "I can’t keep track of every team in several countries." },
+    ],
     decisions: [
       {
         title: "Built the story sales already tells",
         body: "I mapped how our best sellers run a call and turned it into the page: the problems IT admins recognise, then proof from peers, then the platform, then a way to try it.",
+        image: {
+          src: `${V}/after-hero.webp`,
+          alt: "The new velory.com hero: “The engine that runs IT lifecycle management” over a blurred, tilted view of the portal",
+          kind: "shot",
+          caption: "After · the new hero",
+        },
       },
       {
         title: "Problems first",
-        body: "A new section opens with situations admins know from last Tuesday, like “someone left, licences stayed”. Each one links straight to the page that solves it.",
+        body: "A new section asks “Which one sounds like your week?” and answers with five situations admins know from last Tuesday, like “I lose track of what leavers had”. Each one links straight to the page that solves it.",
+        image: {
+          src: `${V}/after-problems-grid.webp`,
+          alt: "Five cards under “Which one sounds like your week?”, each with a small red drawing and a quote",
+          kind: "shot",
+          caption: "Which one sounds like your week?",
+        },
       },
       {
         title: "Modern without a rebrand",
         body: "I turned the brand into a real design system in Webflow: colour, type, spacing and radius tokens, a louder heading scale and one accent colour reserved for actions.",
+        image: {
+          src: `${V}/after-features.webp`,
+          alt: "Feature cards for Visibility, Onboarding, Offboarding and Cost control, each with a product close-up",
+          kind: "shot",
+          caption: "Built for the jobs IT actually runs",
+        },
       },
       {
         title: "One field to start",
         body: "The demo form went from five required fields and a captcha to an email address, wired into HubSpot so sales workflows still run.",
+        image: {
+          src: `${V}/after-demo.webp`,
+          alt: "The book-a-demo page: a short promise on the left and a form with only a work email field on the right",
+          kind: "shot",
+          caption: "One field · work email",
+        },
       },
       {
         title: "Motion that explains",
-        body: "A lifecycle that animates as you scroll, a pinned feature scroll and small rewards on the call to action. Every animation has to explain something and respects reduced motion.",
+        body: "The lifecycle draws itself as you scroll, one stage at a time, until all eight close into a ring around the logo. A pinned feature scroll and small rewards on the call to action follow. Every animation has to explain something and respects reduced motion.",
+        image: {
+          src: `${V}/after-lifecycle.webp`,
+          alt: "The lifecycle ring: eight stages from Connect to Secure around the Velory logo",
+          kind: "shot",
+          caption: "Eight stages, one ring",
+        },
       },
     ],
+    /* DRAFT copy: Lisa to check the lead, steps and why */
+    imageSystem: {
+      lead: "Every image on the new site is the product itself. I made them in Velory Studio, the tool I built, starting from real portal views.",
+      why: "Screenshots age with every release and show everything at once. A close-up shows one idea, stays on-brand, and anyone at Velory can make a new one in minutes, so the site can stay as fresh as the product.",
+      steps: [
+        { title: "Portal view", body: "Every image starts from a real screen in the Velory portal, never a mock-up." },
+        { title: "One close-up", body: "Crop to the one moment that matters, like Omar’s licences revoked on his last day, with depth and blur around it." },
+        { title: "Same people", body: "Licensed demo faces, cast once, so Grace, Omar and Mei Lin come back from page to page." },
+        { title: "Light, dark and film", body: "Every scene renders in both themes to follow the site’s toggle. Scenes that show change become 30 fps loops." },
+      ],
+      pair: {
+        light: `${V}/grace.webp`,
+        dark: `${V}/grace-dark.webp`,
+        alt: "Grace Adeyemi’s assets: MacBook Air 13 (delivered), iPhone 16, a design tool and a mobile plan",
+      },
+      closeUps: [
+        { src: `${V}/close-visibility.webp`, label: "Visibility" },
+        { src: `${V}/close-onboarding.webp`, label: "Onboarding" },
+        { src: `${V}/close-offboarding.webp`, label: "Offboarding" },
+        { src: `${V}/close-cost-control.webp`, label: "Cost control" },
+        { src: `${V}/close-shadow-it-ai.webp`, label: "Shadow IT & AI" },
+        { src: `${V}/close-global-it.webp`, label: "Global IT" },
+      ],
+      films: [
+        { src: `${V}/film-mei-lin.webm`, poster: `${V}/poster-mei-lin.webp`, label: "Mei Lin joins Engineering" },
+        { src: `${V}/film-one-employee.webm`, poster: `${V}/poster-one-employee.webp`, label: "One employee, every asset", start: 4.5 },
+        { src: `${V}/film-ai-seats.webm`, poster: `${V}/poster-ai-seats.webp`, label: "Reclaim 6 AI seats" },
+      ],
+      stats: [
+        { value: "21", label: "scenes on the home page" },
+        { value: "×2", label: "every scene in light and dark" },
+        { value: "7", label: "films, 30 fps loops" },
+      ],
+    },
     solution: [],
     results: [
       { value: "4 mo", label: "research to live site" },
