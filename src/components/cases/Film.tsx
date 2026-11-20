@@ -66,8 +66,14 @@ function rewind(tl: gsap.core.Timeline, fade: HTMLElement, reset: () => void) {
 
 /* ------------------------------------------------------------------ one film */
 
-/** auto: the film plays by itself and loops (the case page hero); otherwise it plays while pointed at */
-export function useFilm(build: (k: Kit) => (() => void) | void, { auto = false }: { auto?: boolean } = {}) {
+/** auto: the film plays by itself and loops (the case page hero); otherwise it plays while pointed at.
+    stretch: the app window takes the stage's own shape (its height follows the stage), so at
+    full view it fits exactly, like a real page in a browser, instead of being cropped at the
+    sides; the window's world height is written to --win-h on the frame. */
+export function useFilm(
+  build: (k: Kit) => (() => void) | void,
+  { auto = false, stretch = false }: { auto?: boolean; stretch?: boolean } = {},
+) {
   const ref = useRef<HTMLElement>(null);
   const ctl = useRef<{ play: () => void; stop: () => void } | null>(null);
   const playing = useRef(false);
@@ -107,10 +113,12 @@ export function useFilm(build: (k: Kit) => (() => void) | void, { auto = false }
         const r = stage.getBoundingClientRect();
         if (!r.width || !r.height) return;
         const s0 = Math.max(r.width / W, r.height / H);
+        const bottom = stretch ? T + (R - L) * (r.height / r.width) : B;
+        if (stretch) root.style.setProperty("--win-h", `${bottom - T}px`);
         const fence = (c: { x: number; y: number; z: number }) => {
-          const z = Math.max(c.z, r.width / (s0 * (R - L)), r.height / (s0 * (B - T)));
+          const z = Math.max(c.z, r.width / (s0 * (R - L)), r.height / (s0 * (bottom - T)));
           const hw = r.width / (s0 * z) / 2, hh = r.height / (s0 * z) / 2;
-          return { x: Math.min(Math.max(c.x, L + hw), R - hw), y: Math.min(Math.max(c.y, T + hh), B - hh), z };
+          return { x: Math.min(Math.max(c.x, L + hw), R - hw), y: Math.min(Math.max(c.y, T + hh), bottom - hh), z };
         };
         const t = tl.time();
         let c = fence(first);

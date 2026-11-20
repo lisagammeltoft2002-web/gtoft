@@ -12,6 +12,10 @@ import { CaseFrame, useFilm } from "./Film";
    left = all new. On the case page hero, the line drifts by itself until you point at it. */
 
 const FIELD = [300, 156]; // the new tab's search field, in the world
+const SHAPES = ["short", "wide", "tall"] as const;
+/* which capture fits a window of this shape (width / height): the captures are 2.57, 2.03 and
+   1.33, and each takes the shapes nearest to it */
+const shapeOf = (aspect: number) => (aspect >= 2.29 ? "short" : aspect < 1.64 ? "tall" : "wide");
 
 type Split = {
   /** where the arrow is, 0–100 across the site */
@@ -33,7 +37,9 @@ export function VeloryComCase({ copy, hero = false }: { copy: CaseCopy; hero?: b
     const site = q("[data-site]")[0] as HTMLElement;
     const before = q("[data-before]")[0] as HTMLElement;
     const after = q("[data-after]")[0] as HTMLElement;
-    const film = q("[data-new]")[0] as HTMLVideoElement;
+    // the wide or the tall recording, whichever matches the window's shape (see the effect below)
+    const films = q("[data-new]") as HTMLVideoElement[];
+    const film = () => films.find((v) => v.offsetParent !== null) ?? films[0];
     const line = { s: 100 };
     const draw = () => {
       site.style.setProperty("--split", `${line.s}%`);
@@ -92,8 +98,8 @@ export function VeloryComCase({ copy, hero = false }: { copy: CaseCopy; hero?: b
     k.show("[data-addr]", 2.3, { y: 0, duration: 0.3 });
     k.cam(300, 0, 1, 2.1, 1.0);
     k.hide("[data-newtab]", 2.3, 0.25);
-    k.show("[data-site]", 2.5, { y: 8, duration: 0.6 });
-    tl.call(() => void film.play().catch(() => {}), undefined, 2.4);
+    k.show("[data-site]", 2.5, { duration: 0.6 });
+    tl.call(() => void film().play().catch(() => {}), undefined, 2.4);
 
     // 3. the line sweeps in from the right to the arrow, then follows it
     tl.call(
@@ -122,12 +128,14 @@ export function VeloryComCase({ copy, hero = false }: { copy: CaseCopy; hero?: b
     return () => {
       still();
       live(false);
-      film.pause();
-      film.currentTime = 0;
+      for (const v of films) {
+        v.pause();
+        v.currentTime = 0;
+      }
       line.s = 100;
       draw();
     };
-  }, { auto: hero });
+  }, { auto: hero, stretch: true });
 
   /* your arrow, measured against the site as it is drawn (the camera's zoom included) */
   useEffect(() => {
@@ -135,6 +143,20 @@ export function VeloryComCase({ copy, hero = false }: { copy: CaseCopy; hero?: b
     if (!root) return;
     const st = split.current;
     const site = root.querySelector<HTMLElement>("[data-site]");
+    const ro = new ResizeObserver(() => {
+      if (!site) return;
+      // the site's own size, in world units (the window's shape, before the camera's zoom)
+      const shape = shapeOf(site.offsetWidth / Math.max(1, site.offsetHeight));
+      const before = site.dataset.shape ?? "wide";
+      if (shape === before) return;
+      const was = site.querySelector<HTMLVideoElement>(`.f-split-${before} video`);
+      site.dataset.shape = shape;
+      if (was && !was.paused) {
+        was.pause();
+        void site.querySelector<HTMLVideoElement>(`.f-split-${shape} video`)?.play().catch(() => {});
+      }
+    });
+    if (site) ro.observe(site);
     const move = (e: PointerEvent) => {
       if (!site || (e.pointerType !== "mouse" && e.buttons === 0)) return;
       const r = site.getBoundingClientRect();
@@ -150,6 +172,7 @@ export function VeloryComCase({ copy, hero = false }: { copy: CaseCopy; hero?: b
     root.addEventListener("pointermove", move);
     root.addEventListener("pointerleave", leave);
     return () => {
+      ro.disconnect();
       root.removeEventListener("pointermove", move);
       root.removeEventListener("pointerleave", leave);
     };
@@ -157,7 +180,7 @@ export function VeloryComCase({ copy, hero = false }: { copy: CaseCopy; hero?: b
 
   return (
     <CaseFrame slug="velory-com" copy={copy} hero={hero} frameRef={ref} handlers={handlers}>
-        <div className="f-win" style={{ left: 20, top: 14, width: 560, height: 312 }}>
+        <div className="f-win" style={{ left: 20, top: 14, width: 560, height: "var(--win-h, 312px)" }}>
           {/* browser bar, full width at the top */}
           <div className="f-abs z-10 flex items-center gap-3 border-b border-[var(--f-line)] bg-[var(--f-soft)] px-3" style={{ left: 0, top: 0, width: 560, height: 36 }}>
             <span className="flex gap-1.5">
@@ -182,8 +205,8 @@ export function VeloryComCase({ copy, hero = false }: { copy: CaseCopy; hero?: b
           </div>
 
           {/* a new tab: one search field */}
-          <div data-newtab="" className="f-abs grid place-items-center" style={{ left: 0, top: 36, width: 560, height: 276 }}>
-            <span data-field="" className="flex items-center gap-2 rounded-full bg-white px-4 text-[11px] shadow-[0_0_0_1px_var(--f-line),0_8px_20px_-14px_rgb(20_40_90/0.25)]" style={{ width: 300, height: 34, marginTop: -36 }}>
+          <div data-newtab="" className="f-abs grid justify-items-center content-start" style={{ left: 0, top: 36, width: 560, height: "calc(var(--win-h, 312px) - 36px)", paddingTop: 103 }}>
+            <span data-field="" className="flex items-center gap-2 rounded-full bg-white px-4 text-[11px] shadow-[0_0_0_1px_var(--f-line),0_8px_20px_-14px_rgb(20_40_90/0.25)]" style={{ width: 300, height: 34 }}>
               <svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true" fill="none" stroke="var(--f-grey)" strokeWidth="1.4" strokeLinecap="round">
                 <circle cx="5.2" cy="5.2" r="3.8" />
                 <path d="M8 8l2.8 2.8" />
@@ -200,14 +223,23 @@ export function VeloryComCase({ copy, hero = false }: { copy: CaseCopy; hero?: b
 
           {/* the site: the old velory.com and the new one on top of each other, split by a
               line that follows your arrow. Left of the line is the old site, right is the new. */}
-          <div data-site="" className="f-abs f-hidden f-split overflow-hidden" style={{ left: 0, top: 36, width: 560, height: 276 }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/images/work/velory-com/split-old.webp" alt="The old velory.com" className="f-split-img" draggable={false} />
-            {/* the new site plays, its hero film running, like the real page */}
-            <video data-new="" className="f-split-img f-split-new" poster="/images/work/velory-com/split-new.webp" muted loop playsInline preload="metadata" aria-label="The new velory.com">
-              <source src="/images/work/velory-com/split-new.webm" type="video/webm" />
-              <source src="/images/work/velory-com/split-new.mp4" type="video/mp4" />
-            </video>
+          <div data-site="" className="f-abs f-hidden f-split overflow-hidden" style={{ left: 0, top: 36, width: 560, height: "calc(var(--win-h, 312px) - 36px)" }}>
+            {/* each site captured at three window shapes (1440×560, ×710 and ×1080), like the real
+                page on a short, a wide and a tall screen; the window shows the one closest to its shape */}
+            {SHAPES.map((v) => {
+              const end = v === "wide" ? "" : `-${v}`;
+              return (
+                <div key={v} className={`f-split-${v}`}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={`/images/work/velory-com/split-old${end}.webp`} alt="The old velory.com" className="f-split-img" draggable={false} />
+                  {/* the new site plays, its hero film running, like the real page */}
+                  <video data-new="" className="f-split-img f-split-new" poster={`/images/work/velory-com/split-new${end}.webp`} muted loop playsInline preload="metadata" aria-label="The new velory.com">
+                    <source src={`/images/work/velory-com/split-new${end}.webm`} type="video/webm" />
+                    <source src={`/images/work/velory-com/split-new${end}.mp4`} type="video/mp4" />
+                  </video>
+                </div>
+              );
+            })}
             <span data-before="" className="f-split-pill" style={{ left: 10 }}>
               Before
             </span>
