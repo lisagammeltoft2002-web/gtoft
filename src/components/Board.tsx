@@ -1,15 +1,18 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useLayoutEffect, useSyncExternalStore } from "react";
 import { Cell } from "./Cell";
 import { gridSize } from "./gridSize";
+import { boardBack } from "./cases/boardMotion";
 
 /* Lays the rectangles out on the net, whatever size the screen is. The two common desktop
    nets (6 × 2 and 6 × 3) have hand-placed layouts; any other desktop size fills the net in
    order of importance, row by row, and leaves out the least important ones that don't fit
    (the page never scrolls). Phones and tablets get a scrolling net with every rectangle. */
 
-export type Tile = { id: string; w?: number; node: React.ReactNode };
+/* own: the rectangle animates itself when a case opens (the case tiles); every other one is
+   pushed away from the opening case, and glides back when you return (see cases/boardMotion) */
+export type Tile = { id: string; w?: number; own?: boolean; node: React.ReactNode };
 type Spot = [col: number, row: number];
 
 const subscribe = (on: () => void) => {
@@ -51,12 +54,15 @@ export function Board({ tiles, layouts }: { tiles: Tile[]; layouts: Record<strin
     : pack(tiles, cols, scroll ? 99 : Number(r));
   const used = Math.max(0, ...Object.values(spots).map((s) => s[1] + 1));
 
+  // back from a case: the moment the board is in place again, it gathers around that case
+  useLayoutEffect(boardBack, []);
+
   return (
     <>
       {tiles.map((t) => {
         const s = spots[t.id];
         return s ? (
-          <Cell key={t.id} col={s[0]} row={s[1]} w={s.w}>
+          <Cell key={t.id} col={s[0]} row={s[1]} w={s.w} push={!t.own}>
             {t.node}
           </Cell>
         ) : null;

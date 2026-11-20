@@ -24,9 +24,9 @@ const tools = about.facts.find((f) => f.label === "Toolbox")?.value.split(", ") 
 /* every rectangle, most important first (on unusual screen sizes the last ones are left out) */
 const tiles: BoardTile[] = [
   { id: "name", w: 2, node: <NameTile first={site.firstName} last={site.lastName} title={board.title} line={intro} /> },
-  { id: "velory", w: 2, node: <VeloryComCase copy={board.cases["velory-com"]} /> },
-  { id: "studio", w: 2, node: <StudioCase copy={board.cases["velory-studio"]} /> },
-  { id: "insights", w: 2, node: <InsightsCase copy={board.cases["actionable-insights"]} /> },
+  { id: "velory", w: 2, own: true, node: <VeloryComCase copy={board.cases["velory-com"]} /> },
+  { id: "studio", w: 2, own: true, node: <StudioCase copy={board.cases["velory-studio"]} /> },
+  { id: "insights", w: 2, own: true, node: <InsightsCase copy={board.cases["actionable-insights"]} /> },
   { id: "contact", node: <ContactTile title={contact.title} email={site.email} linkedin={site.linkedin} cv={site.cv} /> },
   { id: "portrait", node: <PortraitTile src={site.portrait.src} alt={site.portrait.alt} /> },
   { id: "hobbies", node: <Hobbies /> },

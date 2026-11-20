@@ -24,7 +24,6 @@ const REVIEW = [409, 140];
 const BTN = [112, 302];
 
 export function InsightsCase({ copy, hero = false }: { copy: CaseCopy; hero?: boolean }) {
-  const figure = useRef<HTMLSpanElement>(null);
   const saved = useRef<HTMLSpanElement>(null);
 
   const { ref, handlers } = useFilm((k) => {
@@ -33,7 +32,6 @@ export function InsightsCase({ copy, hero = false }: { copy: CaseCopy; hero?: bo
     const render = () => {
       const t = `${Math.round(money.v / 100) * 100}`.replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " kr";
       if (saved.current) saved.current.textContent = t;
-      if (figure.current) figure.current.textContent = t;
     };
 
     // the first frame: the bell's notification, close up
@@ -85,7 +83,7 @@ export function InsightsCase({ copy, hero = false }: { copy: CaseCopy; hero?: bo
     k.show("[data-saved]", 8.4, { y: 6, duration: 0.45 });
     tl.to(money, { v: 9600, duration: 1.2, ease: "power2.out", onUpdate: render }, 8.5);
     tl.to(q("[data-cursor]"), { autoAlpha: 0, duration: 0.3 }, 8.5);
-    k.metric(8.7);
+    k.done(8.7);
     tl.set({}, {}, 10.4);
 
     return () => {
@@ -95,7 +93,7 @@ export function InsightsCase({ copy, hero = false }: { copy: CaseCopy; hero?: bo
   }, { auto: hero });
 
   return (
-    <CaseFrame slug="actionable-insights" copy={copy} hero={hero} frameRef={ref} handlers={handlers} figureRef={figure}>
+    <CaseFrame slug="actionable-insights" copy={copy} hero={hero} frameRef={ref} handlers={handlers}>
         <div className="f-win" style={{ left: 20, top: 14, width: 560, height: 312 }}>
           {/* top bar */}
           <div className="f-abs flex items-center border-b border-[var(--f-line)] px-5" style={{ left: 0, top: 0, width: 560, height: 40 }}>

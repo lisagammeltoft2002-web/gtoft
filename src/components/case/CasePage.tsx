@@ -3,15 +3,17 @@ import { notFound } from "next/navigation";
 import { ViewTransition } from "react";
 import { Arrow } from "@/components/cases/Film";
 import { Journey } from "./Journey";
+import { BackHome } from "./BackHome";
 import { VeloryComCase } from "@/components/cases/VeloryComCase";
 import { StudioCase } from "@/components/cases/StudioCase";
 import { InsightsCase } from "@/components/cases/InsightsCase";
 import { board, caseStudies } from "@/content/site";
 
-/* A case study's own page. Its video (the same one as on the home page tile) is the hero:
-   going in, the tile grows into it. Under it, one calm column of rounded cards in the home
-   page's colours: what it is, the facts, the problem, the insight, the decisions, the
-   numbers, what I learned, and the way on to the next case. */
+/* A case study's own page: the home page tile, opened. Going in, the blue tile grows until it
+   fills the window, its video, name and number staying where they were; the whole page is
+   that blue. Under it, one calm column of containers in the home page's other colours
+   (paper, leaf green, the deep work blue, sunflower yellow): what it is, the facts, the
+   problem, the insight, the decisions, the numbers, what I learned, and the next case. */
 
 const ORDER = ["velory-com", "velory-studio", "actionable-insights"];
 const HERO = { "velory-com": VeloryComCase, "velory-studio": StudioCase, "actionable-insights": InsightsCase } as const;
@@ -31,19 +33,15 @@ export function CasePage({ slug }: { slug: string }) {
   return (
     <main className="case-page">
       <nav className="case-top">
-        <Link href="/" transitionTypes={["nav-back"]} className="case-back">
-          <Arrow back />
-          <span>All work</span>
-        </Link>
-        <span className="t-label case-kind">{c.kind}</span>
+        <BackHome slug={slug} />
       </nav>
+      <span className="t-label case-kind">{c.kind}</span>
 
       <Hero copy={board.cases[slug]} hero />
 
       <ViewTransition enter="case-rise" default="none">
-        <div className="case-body">
+        <div className="case-body" id="story">
           <header className="case-head">
-            <h1 className="case-h1">{c.title}</h1>
             <p className="case-lead">{c.outcome}</p>
           </header>
 

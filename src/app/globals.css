@@ -134,7 +134,8 @@ body {
   gap: 16px;
   padding: 0 var(--pad) calc(18px * var(--ui));
 }
-.lin-words p { margin: 0; }
+.lin-words p, .lin-words h1 { margin: 0; }
+.lin-metric.lin-metric-on { opacity: 1; }
 .lin-title { color: var(--cb); font-size: calc(20px * var(--ui)); line-height: 1.15; letter-spacing: -0.01em; }
 .lin-line { display: block; margin-top: 5px; font-family: var(--font-text), Georgia, serif; font-weight: 400; font-optical-sizing: auto; font-variation-settings: "SOFT" 60; font-size: calc(14.5px * var(--ui)); line-height: 1.35; color: var(--ink-deep); }
 .lin-metric { text-align: right; white-space: nowrap; opacity: 0; }
@@ -432,11 +433,49 @@ body {
 .case-cta svg { transition: transform 0.35s cubic-bezier(0.3, 1.4, 0.5, 1); }
 .case-cta:hover svg { transform: translateX(2px); }
 .case-cta-dark { background: var(--ink-deep); color: var(--sun); box-shadow: none; }
+
+/* when a case's film has played, its arrow starts to pop: a little bounce and a soft yellow
+   ring, every couple of seconds, until the film rewinds */
+.case-cta { position: relative; }
+.case-cta::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 0 0 0 rgb(245 208 79 / 0.7);
+  opacity: 0;
+  pointer-events: none;
+}
+.case-cta.is-ready { animation: cta-pop 1.9s cubic-bezier(0.3, 0, 0.3, 1) 0.15s infinite; }
+.case-cta.is-ready::after { animation: cta-ring 1.9s ease-out 0.15s infinite; }
+.case-cta.is-ready:hover { animation-play-state: paused; }
+@keyframes cta-pop {
+  0% { transform: scale(1); }
+  9% { transform: scale(1.2); }
+  18% { transform: scale(0.94); }
+  26% { transform: scale(1.06); }
+  34%, 100% { transform: scale(1); }
+}
+@keyframes cta-ring {
+  0% { opacity: 1; box-shadow: 0 0 0 0 rgb(245 208 79 / 0.75); }
+  45%, 100% { opacity: 1; box-shadow: 0 0 0 14px rgb(245 208 79 / 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .case-cta.is-ready, .case-cta.is-ready::after { animation: none; }
+  .case-cta.is-ready { box-shadow: 0 0 0 4px rgb(245 208 79 / 0.45); }
+}
+
+/* going in: the case lifts off the board for a moment before it opens */
+.lin-tile { transition: transform 0.17s cubic-bezier(0.3, 0, 0.2, 1), box-shadow 0.17s; }
+.lin-tile.is-lifting { transform: scale(1.025); box-shadow: 0 22px 44px -18px rgb(20 32 64 / 0.4); }
+.cell:has(.is-lifting) { overflow: visible; z-index: 5; }
 .lin-tile { border-radius: 18px; }
 
-/* the case page scrolls (the home board never does) */
-html:has(.case-page),
-html:has(.case-page) body { height: auto; overflow-x: hidden; overflow-y: auto; }
+/* the case page scrolls (the home board never does). Next keeps a page you leave in the
+   background (hidden with an inline display: none), so these only apply while it shows */
+html:has(.case-page:not([style*="display"])),
+html:has(.case-page:not([style*="display"])) body { height: auto; overflow-x: hidden; overflow-y: auto; background: #b0c7e8; }
+@media (prefers-reduced-motion: no-preference) { html:has(.case-page:not([style*="display"])) { scroll-behavior: smooth; } }
 
 /* one spacing scale for the case pages: 8 · 16 · 24 · 40 · 64 · section */
 .case-page {
@@ -448,12 +487,25 @@ html:has(.case-page) body { height: auto; overflow-x: hidden; overflow-y: auto; 
   --section: clamp(80px, 11vw, 136px);
   --gap: 10px; /* between containers, the same as the home board */
   --read: 64ch;
-  max-width: 1240px;
-  margin: 0 auto;
-  padding: var(--gap) var(--gap) var(--s5);
-  color: var(--ink);
+  --edge: clamp(10px, 2.2vw, 32px); /* the video's distance from the window edges */
+  position: relative;
+  padding-bottom: var(--s5);
+  /* the page is the case tile's blue, with the same grain */
+  background: #b0c7e8;
+  color: var(--ink-deep);
 }
-.case-top { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); height: 56px; padding: 0 4px; }
+.case-page::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.12 0 0 0 0 0.2 0 0 0 0 0.38 0 0 0 1.1 -0.38'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+  opacity: 0.55;
+}
+/* "All work" stays at hand however far you scroll; the case's kind sits top right of the hero */
+.case-top { position: fixed; z-index: 20; top: 0; left: 0; display: flex; align-items: center; height: 64px; padding: 0 var(--edge); }
+.case-kind { position: absolute; z-index: 3; top: 0; right: var(--edge); line-height: 64px; }
 .case-back {
   display: inline-flex;
   align-items: center;
@@ -469,24 +521,24 @@ html:has(.case-page) body { height: auto; overflow-x: hidden; overflow-y: auto; 
   transition: transform 0.3s cubic-bezier(0.3, 1.4, 0.5, 1);
 }
 .case-back:hover { transform: translateX(-2px); }
-.case-kind { color: var(--ink-deep); opacity: 0.75; text-align: right; }
+.case-kind { color: var(--ink-deep); opacity: 0.75; text-align: right; white-space: nowrap; }
 
-/* the hero fills the screen, leaving room for the title and the lead under it */
-.case-hero {
-  width: 100%;
-  height: max(340px, calc(100svh - 56px - var(--gap) - 230px));
-  box-shadow: 0 1px 2px rgb(20 32 64 / 0.04), 0 10px 26px -14px rgb(20 32 64 / 0.16);
-}
-.case-hero .film-stage { margin: 14px; }
+/* the hero is the tile, opened: edge to edge, the full window, the video in its white screen
+   and the words under it where they sit on the tile */
+.case-hero { width: 100%; height: 100svh; min-height: 480px; border-radius: 0; }
+.case-hero .film-stage { margin: 64px var(--edge) calc(14px * var(--ui)); }
+.case-hero .lin-words { padding: 0 calc(var(--edge) + 10px) calc(22px * var(--ui)); }
 
-.case-body { display: grid; gap: var(--gap); }
-.case-head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); align-items: end; gap: var(--s3) var(--s5); padding: var(--s4) var(--s1) var(--s5); }
-.case-h1 { margin: 0; font-family: var(--font-flower), Georgia, serif; font-weight: 600; font-size: clamp(44px, 7vw, 84px); line-height: 0.95; letter-spacing: -0.03em; color: var(--ink); }
-.case-lead { margin: 0; max-width: 46ch; font-family: var(--font-text), Georgia, serif; font-variation-settings: "SOFT" 60; font-size: clamp(18px, 1.7vw, 21px); line-height: 1.5; color: var(--ink-deep); text-wrap: pretty; }
+.case-body { position: relative; display: grid; gap: var(--gap); max-width: 1240px; margin: 0 auto; padding: 0 var(--gap); }
+.case-head { padding: var(--section) var(--s1) var(--s5); }
+.case-lead { margin: 0; max-width: 30ch; font-family: var(--font-flower), Georgia, serif; font-weight: 600; font-size: clamp(28px, 3.6vw, 46px); line-height: 1.12; letter-spacing: -0.02em; color: var(--ink-deep); text-wrap: balance; }
 
 .case-card { border-radius: 18px; padding: var(--s4) clamp(24px, 4vw, var(--s5)); box-shadow: 0 1px 2px rgb(20 32 64 / 0.04), 0 10px 26px -14px rgb(20 32 64 / 0.16); }
 .case-section { margin-top: calc(var(--section) - var(--gap)); }
 .case-section-head { padding: 0 var(--s1) var(--s4); }
+/* words that sit right on the blue use the deep blue, so they read (5 : 1) */
+.case-section-head .case-eyebrow, .case-section-head .case-h2 { color: var(--ink-deep); }
+.case-section-head .case-eyebrow { opacity: 0.8; }
 .case-eyebrow { margin: 0 0 var(--s2); font-family: var(--font-ui), system-ui, sans-serif; font-size: 12px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink); opacity: 0.7; }
 .case-h2 { margin: 0; font-family: var(--font-flower), Georgia, serif; font-weight: 600; font-size: clamp(30px, 4vw, 48px); line-height: 1.05; letter-spacing: -0.02em; color: var(--ink); }
 .case-h3 { margin: var(--s2) 0 var(--s2); font-family: var(--font-flower), Georgia, serif; font-weight: 600; font-size: clamp(24px, 2.6vw, 32px); line-height: 1.1; letter-spacing: -0.015em; color: var(--ink); }
@@ -506,7 +558,7 @@ html:has(.case-page) body { height: auto; overflow-x: hidden; overflow-y: auto; 
 .case-text { display: flex; flex-direction: column; justify-content: center; min-height: clamp(320px, 34vw, 440px); padding-block: var(--s5); }
 .case-learned { min-height: 0; align-items: flex-start; }
 .case-num { font-family: var(--font-ui), system-ui, sans-serif; font-size: 13px; color: var(--ink); opacity: 0.6; font-variant-numeric: tabular-nums; }
-.case-media { position: relative; overflow: hidden; border-radius: 18px; min-height: clamp(320px, 34vw, 440px); background: #b0c7e8; box-shadow: 0 1px 2px rgb(20 32 64 / 0.04), 0 10px 26px -14px rgb(20 32 64 / 0.16); }
+.case-media { position: relative; overflow: hidden; border-radius: 18px; min-height: clamp(320px, 34vw, 440px); background: #c9d9f0; box-shadow: 0 1px 2px rgb(20 32 64 / 0.04), 0 10px 26px -14px rgb(20 32 64 / 0.16); }
 .case-media img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .case-media-empty::before {
   content: "";
@@ -533,9 +585,9 @@ html:has(.case-page) body { height: auto; overflow-x: hidden; overflow-y: auto; 
 .case-step p { margin: 0; font-family: var(--font-text), Georgia, serif; font-size: 15px; line-height: 1.45; }
 
 .case-results { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--gap); }
-.case-result { display: grid; gap: var(--s1); align-content: end; min-height: 200px; padding: var(--s3); background: #b0c7e8; position: relative; overflow: hidden; }
+.case-result { display: grid; gap: var(--s1); align-content: end; min-height: 200px; padding: var(--s3); background: var(--work); position: relative; overflow: hidden; }
 .case-figure { font-family: var(--font-flower), Georgia, serif; font-weight: 600; font-size: clamp(44px, 5vw, 60px); line-height: 1; letter-spacing: -0.025em; color: var(--ink); }
-.case-result .t-label { color: var(--ink-deep); }
+.case-result .case-figure, .case-result .t-label { color: var(--paper); }
 
 .case-next { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); margin-top: calc(var(--section) - var(--gap)); padding-block: var(--s4); transition: transform 0.35s cubic-bezier(0.3, 1.4, 0.5, 1); }
 .case-next:hover { transform: translateY(-2px); }
@@ -551,16 +603,29 @@ html:has(.case-page) body { height: auto; overflow-x: hidden; overflow-y: auto; 
   .case-media { aspect-ratio: 4 / 3; }
   .case-journey { grid-template-columns: repeat(4, 72%); overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 4px; }
   .case-step { scroll-snap-align: start; }
-  .case-hero { height: auto; aspect-ratio: 16 / 11; }
+  .case-hero { height: auto; min-height: 0; }
+  .case-hero .film-stage { aspect-ratio: 600 / 340; }
 }
 
-/* the transitions */
-::view-transition-group(.case-morph) { animation-duration: 0.75s; animation-timing-function: cubic-bezier(0.65, 0, 0.25, 1); }
-::view-transition-image-pair(.case-morph) { isolation: isolate; }
-::view-transition-old(.case-morph), ::view-transition-new(.case-morph) { animation-duration: 0.45s; height: 100%; object-fit: cover; }
-::view-transition-old(root) { animation: 0.3s ease both vt-out; }
+/* the transitions (the moves themselves are in components/cases/boardMotion.ts).
+   The case grows into the page (and shrinks back) on a soft spring, its corners squaring as
+   it fills the window; its name and arrow glide along at the same size; the rest of the
+   board is pushed away from it and comes back. Everything on that spring lasts 0.82s. */
+::view-transition-group(.case-morph),
+::view-transition-group(.case-slide) { animation-duration: 0.82s; animation-timing-function: linear(0, 0.031, 0.106, 0.206, 0.316, 0.426, 0.53, 0.624, 0.706, 0.776, 0.834, 0.881, 0.918, 0.947, 0.968, 0.984, 0.995, 1.003, 1.007, 1.01, 1.011, 1.011, 1.01, 1.009, 1.008, 1.007, 1.006, 1.005, 1.004, 1.003, 1.002, 1.002, 1.001, 1.001, 1); }
+::view-transition-group(.case-morph) { z-index: 10; }
+::view-transition-group(.case-slide) { z-index: 11; }
+::view-transition-image-pair(.case-morph) { isolation: isolate; overflow: hidden; }
+/* (the old and new pictures inherit their timing from the image pair, so they set their own) */
+html:active-view-transition-type(nav-forward)::view-transition-image-pair(.case-morph) { animation: 0.82s corners-square both; }
+html:active-view-transition-type(nav-back)::view-transition-image-pair(.case-morph) { animation: 0.82s corners-round both; }
+@keyframes corners-square { from { border-radius: 18px; } to { border-radius: 0; } }
+@keyframes corners-round { from { border-radius: 0; } to { border-radius: 18px; } }
+::view-transition-old(.case-morph), ::view-transition-new(.case-morph) { animation-duration: 0.5s; animation-direction: normal; animation-timing-function: ease; height: 100%; object-fit: cover; }
+::view-transition-old(.case-slide), ::view-transition-new(.case-slide) { animation-duration: 0.35s; }
+::view-transition-old(root) { animation: 0.35s ease both vt-out; }
 ::view-transition-new(root) { animation: 0.45s 0.25s ease both vt-in; }
-::view-transition-new(.case-rise) { animation: 0.6s 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both vt-rise; }
+::view-transition-new(.case-rise) { animation: 0.7s 0.45s cubic-bezier(0.16, 1, 0.3, 1) both vt-rise; }
 @keyframes vt-out { to { opacity: 0; } }
 @keyframes vt-in { from { opacity: 0; } }
 @keyframes vt-rise { from { opacity: 0; transform: translateY(24px); } }

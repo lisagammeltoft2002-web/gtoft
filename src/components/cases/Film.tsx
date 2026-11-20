@@ -1,17 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, ViewTransition } from "react";
+import { useRouter } from "next/navigation";
+import { useLayoutEffect, useRef, useState, ViewTransition } from "react";
 import gsap from "gsap";
 import { TextPlugin } from "gsap/TextPlugin";
 import type { CaseCopy } from "@/content/site";
+import { openCase } from "./boardMotion";
 
 gsap.registerPlugin(TextPlugin);
 
 /* The case studies as short product videos. Each one is a small world of real product UI
    (W × H px) filmed by a camera that eases in on what matters and out again, with a cursor
    that moves, hovers and clicks. A film plays only while it's pointed at (or after a tap);
-   it holds its last frame, and when the pointer leaves it fades back to its first frame. */
+   it holds its last frame, and its yellow arrow starts to pop: the way in. When the pointer
+   leaves it fades back to its first frame. */
 
 const W = 600;
 const H = 340;
@@ -40,14 +43,13 @@ export interface Kit {
   /** show elements that start hidden */
   show: (selector: string, at: number, vars?: gsap.TweenVars, stagger?: number) => void;
   hide: (selector: string, at: number, dur?: number) => void;
-  /** the case's number, at the end */
-  metric: (at: number) => void;
+  /** the end of the film: the yellow arrow starts to pop */
+  done: (at: number) => void;
 }
 
 /* fade a film back to its first frame; returns the fades, so a new play can cancel just them */
-function rewind(tl: gsap.core.Timeline, fade: HTMLElement, metric: HTMLElement | null, reset: () => void) {
+function rewind(tl: gsap.core.Timeline, fade: HTMLElement, reset: () => void) {
   const out: gsap.core.Tween[] = [];
-  if (metric) out.push(gsap.to(metric, { autoAlpha: 0, duration: 0.3 }));
   out.push(
     gsap.to(fade, {
       autoAlpha: 0,
@@ -70,16 +72,21 @@ export function useFilm(build: (k: Kit) => (() => void) | void, { auto = false }
   const ctl = useRef<{ play: () => void; stop: () => void } | null>(null);
   const playing = useRef(false);
 
-  useEffect(() => {
+  /* a layout effect: when you come back to the page, the film is set up again before the
+     transition takes its picture, so nothing jumps when the transition ends */
+  useLayoutEffect(() => {
     const root = ref.current;
     if (!root) return;
+    // (set up again when you come back to the page: the film starts from its first frame)
+    playing.current = false;
     const q = gsap.utils.selector(root) as Q;
     const camEl = q("[data-cam]")[0] as HTMLElement;
     const cur = q("[data-cursor]")[0] as HTMLElement;
     const art = q("[data-cursor-art]")[0] as HTMLElement;
     const ring = q("[data-ripple]")[0] as HTMLElement;
     const stage = q("[data-stage]")[0] as HTMLElement;
-    const metricEl = (q("[data-metric]")[0] as HTMLElement) ?? null;
+    const cta = root.querySelector<HTMLElement>(".case-cta");
+    const ready = (on: boolean) => cta?.classList.toggle("is-ready", on);
     let ro: ResizeObserver | null = null;
 
     const ctx = gsap.context(() => {
@@ -165,14 +172,14 @@ export function useFilm(build: (k: Kit) => (() => void) | void, { auto = false }
         hide: (selector, at, dur = 0.25) => {
           tl.to(q(selector), { autoAlpha: 0, duration: dur, ease: "none" }, at);
         },
-        metric: (at) => {
-          const m = q("[data-metric]");
-          if (m.length) tl.fromTo(m, { autoAlpha: 0, y: 6 }, { autoAlpha: 1, y: 0, duration: 0.5 }, at);
+        done: (at) => {
+          tl.call(() => ready(true), undefined, at);
         },
       };
 
       const extraReset = build(kit) ?? (() => {});
       const reset = () => {
+        ready(false);
         apply();
         extraReset();
       };
@@ -189,7 +196,7 @@ export function useFilm(build: (k: Kit) => (() => void) | void, { auto = false }
         let wait = gsap.delayedCall(0.9, () => tl.play(0));
         tl.eventCallback("onComplete", () => {
           wait = gsap.delayedCall(2.4, () => {
-            fades = rewind(tl, stage, metricEl, reset);
+            fades = rewind(tl, stage, reset);
             wait = gsap.delayedCall(0.5, () => tl.play(0));
           });
         });
@@ -200,6 +207,7 @@ export function useFilm(build: (k: Kit) => (() => void) | void, { auto = false }
       ctl.current = {
         play: () => {
           fades.forEach((t) => t.kill());
+          ready(false);
           gsap.set(stage, { autoAlpha: 1 });
           if (tl.progress() > 0) {
             tl.pause(0);
@@ -209,7 +217,8 @@ export function useFilm(build: (k: Kit) => (() => void) | void, { auto = false }
         },
         stop: () => {
           tl.pause();
-          if (tl.progress() > 0) fades = rewind(tl, stage, metricEl, reset);
+          ready(false);
+          if (tl.progress() > 0) fades = rewind(tl, stage, reset);
         },
       };
     }, root);
@@ -247,10 +256,11 @@ export function useFilm(build: (k: Kit) => (() => void) | void, { auto = false }
 export function FilmStage({ children }: { children: React.ReactNode }) {
   const box = useRef<HTMLDivElement>(null);
   const [s, setS] = useState(0);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = box.current;
     if (!el) return;
-    const ro = new ResizeObserver(([e]) => setS(Math.max(e.contentRect.width / W, e.contentRect.height / H)));
+    // a page kept in the background measures 0 × 0: keep the last real size for when it's back
+    const ro = new ResizeObserver(([e]) => e.contentRect.width && setS(Math.max(e.contentRect.width / W, e.contentRect.height / H)));
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
@@ -283,48 +293,78 @@ function Cursor() {
   );
 }
 
-/* the words, bottom left: the name and one line. Bottom right: the number (at the end of the
-   film) and the yellow way in to the case */
-export function CaseWords({ copy, slug, figureRef }: { copy: CaseCopy; slug: string; figureRef?: React.Ref<HTMLSpanElement> }) {
+/* the words, bottom left: the name and one line. Bottom right: the yellow way in, which
+   starts to pop once the film has played. On the case page (hero) the same words stand in
+   the same places: the name is the page's heading, the case's number sits beside the arrow,
+   and the arrow points down to the story. The name and the arrow each have their own
+   view-transition name, so while the tile grows into the page they glide to their new places
+   at the same size. */
+export function CaseWords({ copy, slug, hero = false }: { copy: CaseCopy; slug: string; hero?: boolean }) {
+  const router = useRouter();
   const m = copy.metrics[0];
+  const Title = hero ? "h1" : "p";
+  const href = `/work/${slug}`;
+
+  /* going in: the tile lifts, then the board is pushed away and the tile opens */
+  const open = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+    e.preventDefault();
+    openCase(slug);
+    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    e.currentTarget.closest(".lin-tile")?.classList.add("is-lifting");
+    window.setTimeout(() => router.push(href, { transitionTypes: ["nav-forward"] }), still ? 0 : 170);
+  };
+
   return (
     <div className="lin-words">
-      <div className="min-w-0">
-        <p className="lin-title">{copy.title}</p>
-        <p className="lin-line">{copy.role}</p>
-      </div>
+      <ViewTransition name={`case-name-${slug}`} share="case-slide" default="none">
+        <div className="min-w-0">
+          <Title className="lin-title">{copy.title}</Title>
+          <p className="lin-line">{copy.role}</p>
+        </div>
+      </ViewTransition>
       <div className="flex items-end gap-4">
-        <p className="lin-metric" data-metric="">
-          <span className="lin-figure" ref={figureRef}>
-            {m.figure}
-          </span>
-          <span className="lin-line">{m.label}</span>
-        </p>
-        <Link href={`/work/${slug}`} transitionTypes={["nav-forward"]} className="case-cta" aria-label={`Read the ${copy.title} case`}>
-          <Arrow />
-        </Link>
+        {hero && (
+          <p className="lin-metric">
+            <span className="lin-figure">{m.figure}</span>
+            <span className="lin-line">{m.label}</span>
+          </p>
+        )}
+        <ViewTransition name={`case-cta-${slug}`} share="case-slide" default="none">
+          {hero ? (
+            <a href="#story" className="case-cta" aria-label="Read the story">
+              <Arrow down />
+            </a>
+          ) : (
+            <Link href={href} onClick={open} className="case-cta" aria-label={`Read the ${copy.title} case`}>
+              <Arrow />
+            </Link>
+          )}
+        </ViewTransition>
       </div>
     </div>
   );
 }
 
-export function Arrow({ back = false }: { back?: boolean }) {
+export function Arrow({ back = false, down = false }: { back?: boolean; down?: boolean }) {
+  const turn = back ? "scaleX(-1)" : down ? "rotate(90deg)" : undefined;
   return (
-    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" style={back ? { transform: "scaleX(-1)" } : undefined}>
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" style={turn ? { transform: turn } : undefined}>
       <path d="M3 8h10M8.5 3.5 13 8l-4.5 4.5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
 /* one case, either as its tile on the home page or as the hero of its own page. Both carry
-   the same view-transition name, so going in, the tile grows into the hero (and back out). */
+   the same view-transition name, so going in, the tile grows into the hero (and back out),
+   its corners squaring as it fills the window. On the board it is also one of the
+   rectangles that are pushed away when another case opens (see boardMotion). */
 export function CaseFrame({
   slug,
   copy,
   hero,
   frameRef,
   handlers,
-  figureRef,
   children,
 }: {
   slug: string;
@@ -332,14 +372,19 @@ export function CaseFrame({
   hero?: boolean;
   frameRef: React.Ref<HTMLElement>;
   handlers: Record<string, unknown>;
-  figureRef?: React.Ref<HTMLSpanElement>;
   children: React.ReactNode;
 }) {
   return (
     <ViewTransition name={`case-${slug}`} share="case-morph" default="none">
-      <article ref={frameRef} className={`lin-tile film ${hero ? "case-hero" : ""}`} aria-label={`${copy.title}: ${copy.role}`} {...(hero ? {} : handlers)}>
+      <article
+        ref={frameRef}
+        className={`lin-tile film ${hero ? "case-hero" : ""}`}
+        aria-label={`${copy.title}: ${copy.role}`}
+        data-case={slug}
+        {...(hero ? {} : { "data-push": "", ...handlers })}
+      >
         <FilmStage>{children}</FilmStage>
-        {!hero && <CaseWords copy={copy} slug={slug} figureRef={figureRef} />}
+        <CaseWords copy={copy} slug={slug} hero={hero} />
       </article>
     </ViewTransition>
   );

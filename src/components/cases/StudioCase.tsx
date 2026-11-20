@@ -69,7 +69,7 @@ export function StudioCase({ copy, hero = false }: { copy: CaseCopy; hero?: bool
     // 6. all the way out
     k.cam(300, 172, 1.02, 11.5, 1.2);
     tl.to(k.q("[data-cursor]"), { autoAlpha: 0, duration: 0.3 }, 11.7);
-    k.metric(12.1);
+    k.done(12.1);
     tl.set({}, {}, 12.8);
   }, { auto: hero });
 

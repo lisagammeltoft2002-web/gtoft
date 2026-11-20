@@ -40,7 +40,7 @@ export function VeloryComCase({ copy, hero = false }: { copy: CaseCopy; hero?: b
     // 3. the whole site scrolls by, with a breath at each part
     tl.to(q("[data-page]"), { y: -270, duration: 1.5, ease: "power2.inOut" }, 4.2);
     tl.to(q("[data-page]"), { y: -SCROLL_END, duration: 1.5, ease: "power2.inOut" }, 6.3);
-    k.metric(7.9);
+    k.done(7.9);
     tl.set({}, {}, 9.2);
   }, { auto: hero });
 
