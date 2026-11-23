@@ -87,6 +87,53 @@ const still = (name: string, pts: Float32Array, view = 0.32): Build => ({
   },
 });
 
+/* like still, but it builds itself: the dots appear in a random order over the first
+   part of its time (the hobbies' way of building, for shapes that don't move) */
+const grow = (name: string, pts: Float32Array, view = 0.32): Build => {
+  const order = Float32Array.from({ length: pts.length / 3 }, () => Math.random());
+  return {
+    name,
+    seconds: 4,
+    view,
+    spin: false,
+    update(t, pos, show) {
+      pos.set(pts);
+      const k = Math.min(1, t * 1.6); // built by 60 % of its time, then it rests
+      for (let i = 0; i < order.length; i++) show[i] = Math.min(1, Math.max(0, (k * 1.1 - order[i]) / 0.1));
+    },
+  };
+};
+
+/* a map folded in three like an accordion, a dashed route across it and a pin at the end */
+function foldedMap(N: number) {
+  const W = 4.6, H = 11, A = 0.35, half = W / 2;
+  const lean = Math.sin(A) * half; // how far a panel's edge leans in or out
+  // the middle panel turns one way, the outer two the other, meeting at the folds
+  const panels: Part[] = [
+    { inside: rr(-W, 0, W, H, 0.25), box: [-W - half, -H / 2, -half, H / 2], depth: 0.45, turn: A, z: -2 * lean },
+    { inside: rr(0, 0, W, H, 0.25), box: [-half, -H / 2, half, H / 2], depth: 0.45, turn: -A },
+    { inside: rr(W, 0, W, H, 0.25), box: [half, -H / 2, W + half, H / 2], depth: 0.45, turn: A, z: 2 * lean },
+  ];
+  const zAt = (x: number) => (x < -half ? -Math.sin(A) * x - 2 * lean : x > half ? -Math.sin(A) * x + 2 * lean : Math.sin(A) * x);
+  const nPanels = Math.round(N * 0.72), nRoute = Math.round(N * 0.14), nPin = N - nPanels - nRoute;
+  const out = new Float32Array(N * 3);
+  out.set(extrude(nPanels, panels), 0);
+  // the route: a dashed curve from bottom left to the pin
+  let o = nPanels * 3;
+  for (let j = 0; j < nRoute; j++) {
+    let t = 0;
+    do t = Math.random(); while (Math.floor(t * 14) % 2 === 1); // dashes
+    const x = -5.6 + 9.4 * t, y = -3.6 + 5.4 * t + 1.8 * Math.sin(t * Math.PI * 1.6);
+    out[o++] = x + gauss() * 0.12;
+    out[o++] = y + gauss() * 0.12;
+    out[o++] = zAt(x) + 0.35;
+  }
+  // the pin, standing on the route's end
+  const pin = extrude(nPin, [{ inside: minus(any(disc(3.8, 4.6, 1.4), tri([2.6, 4.0], [5.0, 4.0], [3.8, 1.6])), disc(3.8, 4.6, 0.55)), box: [2.2, 1.4, 5.4, 6.2], depth: 1, z: zAt(3.8) + 1.1 }]);
+  out.set(pin, o);
+  return out;
+}
+
 /* ------------------------------------------------------------------ the shapes */
 
 const bubbleShape = (cx: number, cy: number, s: number, flip = false): In => {
@@ -100,6 +147,8 @@ const bubbleShape = (cx: number, cy: number, s: number, flip = false): In => {
 };
 
 const SHAPES: Record<string, (N: number) => Build> = {
+  map: (N) => grow("a folded map with a route and a pin", foldedMap(N)),
+
   bubble: (N) => still("a chat bubble", extrude(N, [{ inside: bubbleShape(0, 0.6, 1), box: [-8, -6, 8, 6], depth: 2.2 }])),
 
   bubbles: (N) =>
@@ -225,3 +274,12 @@ const SHAPES: Record<string, (N: number) => Build> = {
 
 export const SHAPE_NAMES = Object.keys(SHAPES);
 export const journeyShape = (name: string) => (n: number) => [SHAPES[name](n)];
+/** several sculptures in turn, each building itself, then flowing into the next (like the hobbies) */
+export const growingShapes = (names: string[]) => (n: number) =>
+  names.map((name) => {
+    const b = SHAPES[name](n);
+    if (name === "map") return b;
+    const pts = new Float32Array(n * 3), show = new Float32Array(n);
+    b.update(1, pts, show);
+    return grow(b.name, pts, b.view);
+  });

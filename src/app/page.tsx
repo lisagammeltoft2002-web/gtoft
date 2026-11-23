@@ -1,5 +1,6 @@
-import { Board, type Tile as BoardTile } from "@/components/Board";
-import { Grid } from "@/components/Grid";
+import { type Tile as BoardTile } from "@/components/Board";
+import { CaseRail } from "@/components/home/CaseRail";
+import { AboutRing } from "@/components/home/AboutRing";
 import { Hobbies } from "@/components/Hobbies";
 import { WindyField } from "@/components/WindyField";
 import { VeloryComCase } from "@/components/cases/VeloryComCase";
@@ -10,9 +11,9 @@ import { NameTile } from "@/components/tiles/NameTile";
 import { PortraitTile } from "@/components/tiles/PortraitTile";
 import { ContactTile } from "@/components/tiles/ContactTile";
 import { NowTile } from "@/components/tiles/NowTile";
-import { HowIWork } from "@/components/tiles/HowIWork";
+import { HowIThink } from "@/components/tiles/HowIThink";
 import { AboutTile, SunflowerDrawing, ToolboxTile } from "@/components/tiles/Quiet";
-import { about, board, contact, intro, introMore, process, site } from "@/content/site";
+import { about, board, contact, howIThink, intro, introMore, site } from "@/content/site";
 
 /* The home page: one board of rectangles. What matters most comes first and biggest:
    who Lisa is (the name), the proof (three wide case studies, each its own shade of blue
@@ -41,18 +42,11 @@ const tiles: BoardTile[] = [
       </Tile>
     ),
   },
-  {
-    id: "how",
-    node: (
-      <Tile label="How I work">
-        <HowIWork steps={process.map((p) => p.label)} />
-      </Tile>
-    ),
-  },
+  { id: "how", node: <HowIThink label={howIThink.label} steps={howIThink.steps} /> },
   {
     id: "toolbox",
     node: (
-      <Tile label="Toolbox">
+      <Tile label="Toolbox" note="What I use every day">
         <ToolboxTile tools={tools} />
       </Tile>
     ),
@@ -79,11 +73,38 @@ const layouts: Record<string, Record<string, Spot>> = {
   "6x3": { ...twoRows, about: [0, 2], now: [2, 2], how: [3, 2], toolbox: [4, 2], drawing: [5, 2] },
 };
 
+/* The home page, one idea per section, scrolling down.
+   1. Who: name, title, one line, and the three case studies on an endless row.
+   (The board's other rectangles are kept above, ready for the next sections.) */
+void layouts;
+
+/* 2. a bit about me: one circle each, the board's personal rectangles (everything that
+   moves keeps moving) */
+const aboutIds: [string, string][] = [
+  ["portrait", "Lisa, drawn in dots"],
+  ["hobbies", "What I make: pottery, crochet, rug tufting, painting, sewing"],
+  ["sunflowers", "Sunflowers in the wind"],
+  ["about", "A bit about me"],
+  ["how", "How I think: the four questions I always ask"],
+  ["toolbox", "Toolbox"],
+];
+// "how" lifts fully flat, so its questions read straight on
+const aboutMe = aboutIds.map(([id, label]) => ({ id, label, flat: id === "how", node: tiles.find((t) => t.id === id)!.node }));
+
+const cases = tiles.filter((t) => t.own).map((t) => ({ id: t.id, node: t.node, poster: `/images/home/case-${t.id}.webp` }));
+
 export default function Home() {
   return (
-    <main className="relative min-h-dvh overflow-hidden">
-      <Grid />
-      <Board tiles={tiles} layouts={layouts} />
+    <main className="home">
+      <section className="home-first" aria-label="Introduction">
+        <header className="home-intro">
+          <h1 className="home-name">{site.name}</h1>
+          <p className="home-title">{board.title}</p>
+          <p className="home-line">{site.positioning}</p>
+        </header>
+        <CaseRail items={cases} />
+      </section>
+      <AboutRing items={aboutMe} />
     </main>
   );
 }

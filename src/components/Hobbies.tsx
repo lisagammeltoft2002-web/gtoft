@@ -1,5 +1,7 @@
 "use client";
 
+import { CurvedText } from "./CurvedText";
+
 import { useState } from "react";
 import { Bloom } from "./Bloom";
 import { NAMES } from "./sculptures";
@@ -12,12 +14,13 @@ export function Hobbies() {
   return (
     <section className="tile tone-leaf linen">
       <Bloom onShape={setIndex} />
-      <p className="tile-label t-label absolute top-[var(--pad)] left-[var(--pad)] right-[var(--pad)] m-0 pointer-events-none" aria-live="polite">
-        <span key={index} className="fade-up inline-block">
-          {NAMES[index]}
-        </span>
+      {/* the hobby's name, then the line, bent round the circle's edge from 9 o'clock */}
+      <p className="sr-only" aria-live="polite">
+        {NAMES[index]}. When I’m not designing, I design.
       </p>
-      <p className="t-body absolute bottom-[var(--pad)] left-[var(--pad)] right-[var(--pad)] m-0 pointer-events-none">When I’m not designing, I design.</p>
+      <div key={index} className="fade-up absolute inset-0">
+        <CurvedText title={NAMES[index]} text="When I’m not designing, I design." />
+      </div>
     </section>
   );
 }

@@ -93,7 +93,7 @@ body {
 }
 
 .tile-grid > * { margin: 0; }
-.tile-stage { position: relative; pointer-events: auto; }
+.tile-stage { position: relative; grid-row: 2; pointer-events: auto; } /* the middle row, even when the label is bent round the edge instead */
 .tile-foot > * { margin: 0; }
 .tile-foot > * + * { margin-top: 6px; }
 .tile-label { display: flex; gap: 0.4rem; opacity: 0.85; }
@@ -237,15 +237,18 @@ body {
 }
 .f-caret { display: inline-block; width: 1px; height: 1.05em; margin-left: 1px; vertical-align: -0.15em; background: var(--f-accent); animation: f-blink 1s steps(1) infinite; }
 /* velory.com before/after: the old site whole, the new one shown right of the line */
-.film .f-split { --split: 100%; touch-action: pan-y; }
+.film .f-split { touch-action: pan-y; }
+.film .f-split-clip { position: absolute; inset: 0; overflow: hidden; transform: translate3d(100%, 0, 0); will-change: transform; }
 .film .f-split.is-live { cursor: ew-resize; }
 .film .f-split-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; user-select: none; pointer-events: none; }
 .film .f-split[data-crop] .f-split-img { object-fit: cover; object-position: top; }
-.film .f-split-new { clip-path: inset(0 0 0 var(--split)); }
-.film .f-split-line { position: absolute; top: 0; bottom: 0; left: var(--split); width: 1.5px; margin-left: -0.75px; background: #fff; box-shadow: 0 0 0 0.5px rgb(20 40 90 / 0.12), 0 0 12px rgb(20 40 90 / 0.18); pointer-events: none; }
-.film .f-split-knob { position: absolute; top: 50%; left: 50%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 108px; height: 22px; border-radius: 999px; background: #fff; color: var(--f-accent-deep); font-family: var(--font-ui), system-ui, sans-serif; font-size: 9px; font-weight: 500; letter-spacing: 0.02em; white-space: nowrap; transform: translate(-50%, -50%); box-shadow: 0 0 0 0.5px rgb(20 40 90 / 0.1), 0 4px 12px -4px rgb(20 40 90 / 0.35); }
-.film .f-split-side { display: flex; align-items: center; gap: 4px; padding: 0 8px; }
-.film .f-split-side:first-child { justify-content: flex-end; box-shadow: inset -0.5px 0 0 rgb(20 40 90 / 0.14); }
+.film .f-split-new { transform: translate3d(-100%, 0, 0); will-change: transform; }
+.film .f-split-line { position: absolute; top: 0; bottom: 0; left: 0; transform: translate3d(560px, 0, 0); will-change: transform; width: 1.5px; margin-left: -0.75px; background: #fff; box-shadow: 0 0 0 0.5px rgb(20 40 90 / 0.12), 0 0 12px rgb(20 40 90 / 0.18); pointer-events: none; }
+.film .f-split-knob { position: absolute; top: 50%; left: 50%; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 999px; background: #fff; color: var(--f-accent-deep); transform: translate(-50%, -50%) scale(var(--bar-k, 1)); box-shadow: 0 0 0 0.5px rgb(20 40 90 / 0.1), 0 4px 12px -4px rgb(20 40 90 / 0.35); }
+/* the before / after switch in the browser bar: it only tells, the line does the moving */
+.film .f-which { display: flex; gap: 2px; padding: 2px; border-radius: 999px; background: #fff; box-shadow: 0 0 0 1px var(--f-line); font-size: 10px; font-weight: 500; white-space: nowrap; }
+.film .f-which > span { padding: 3px 9px; border-radius: 999px; color: var(--f-faint); transition: color 0.25s ease, background-color 0.25s ease; }
+.film .f-which[data-on="before"] > [data-side="before"], .film .f-which[data-on="after"] > [data-side="after"] { background: var(--f-accent-wash); color: var(--f-accent-deep); }
 @keyframes f-blink { 50% { opacity: 0; } }
 .f-spin { animation: f-spin 0.8s linear infinite; transform-origin: 50% 50%; }
 @keyframes f-spin { to { transform: rotate(360deg); } }
@@ -390,7 +393,10 @@ body {
 }
 
 .tool-tag {
-  padding: 6px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 6px 9px;
   border: 1px solid currentColor;
   border-radius: 999px;
   background: var(--paper);
@@ -526,10 +532,13 @@ html:has(.case-page:not([style*="display"])) body { height: auto; overflow-x: hi
 /* a slim blue frame around it, like the tile's */
 .case-hero .film-stage { height: calc(100svh - 20px); min-height: 420px; margin: 10px; border-radius: 14px; }
 .case-hero .lin-words { padding: var(--s4) var(--edge) var(--s3); }
+/* the page's own name, as big as the lead under it so it reads as the title */
+.case-hero .lin-title { font-size: clamp(30px, 3.4vw, 46px); line-height: 1.05; letter-spacing: -0.02em; }
+.case-hero .lin-line { margin-top: 8px; font-size: clamp(16px, 1.4vw, 19px); }
 
 .case-body { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap); max-width: 1240px; margin: 0 auto; padding: 0 var(--gap); }
 .case-head { padding: var(--section) var(--s1) var(--s5); }
-.case-lead { margin: 0; max-width: 30ch; font-family: var(--font-flower), Georgia, serif; font-weight: 600; font-size: clamp(28px, 3.6vw, 46px); line-height: 1.12; letter-spacing: -0.02em; color: var(--ink-deep); text-wrap: balance; }
+.case-lead { margin: 0; max-width: 30ch; font-family: var(--font-flower), Georgia, serif; font-weight: 600; font-size: clamp(24px, 2.6vw, 34px); line-height: 1.15; letter-spacing: -0.02em; color: var(--ink-deep); text-wrap: balance; }
 
 .case-card { border-radius: 18px; padding: var(--s4) clamp(24px, 4vw, var(--s5)); box-shadow: 0 1px 2px rgb(20 32 64 / 0.04), 0 10px 26px -14px rgb(20 32 64 / 0.16); }
 .case-section { margin-top: calc(var(--section) - var(--gap)); }
@@ -537,12 +546,12 @@ html:has(.case-page:not([style*="display"])) body { height: auto; overflow-x: hi
 /* words that sit right on the blue use the deep blue, so they read (5 : 1) */
 .case-section-head .case-eyebrow, .case-section-head .case-h2 { color: var(--ink-deep); }
 .case-section-head .case-eyebrow { opacity: 0.8; }
-.case-eyebrow { margin: 0 0 var(--s2); font-family: var(--font-ui), system-ui, sans-serif; font-size: 12px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink); opacity: 0.7; }
-.case-h2 { margin: 0; font-family: var(--font-flower), Georgia, serif; font-weight: 600; font-size: clamp(30px, 4vw, 48px); line-height: 1.05; letter-spacing: -0.02em; color: var(--ink); }
-.case-h3 { margin: var(--s2) 0 var(--s2); font-family: var(--font-flower), Georgia, serif; font-weight: 600; font-size: clamp(24px, 2.6vw, 32px); line-height: 1.1; letter-spacing: -0.015em; color: var(--ink); }
-.case-p { margin: 0; max-width: var(--read); font-family: var(--font-text), Georgia, serif; font-variation-settings: "SOFT" 60; font-size: 17px; line-height: 1.65; color: var(--ink-deep); text-wrap: pretty; }
+.case-eyebrow { margin: 0 0 var(--s2); font-family: var(--font-ui), system-ui, sans-serif; font-size: 14px; font-weight: 500; color: var(--ink); opacity: 0.75; }
+.case-h2 { margin: 0; font-family: var(--font-flower), Georgia, serif; font-weight: 600; font-size: clamp(26px, 2.8vw, 36px); line-height: 1.08; letter-spacing: -0.02em; color: var(--ink); }
+.case-h3 { margin: var(--s2) 0 var(--s2); font-family: var(--font-flower), Georgia, serif; font-weight: 600; font-size: clamp(21px, 2vw, 26px); line-height: 1.15; letter-spacing: -0.015em; color: var(--ink); }
+.case-p { margin: 0; max-width: var(--read); font-family: var(--font-text), Georgia, serif; font-variation-settings: "SOFT" 60; font-size: 16px; line-height: 1.6; color: var(--ink-deep); text-wrap: pretty; }
 .case-p + .case-p { margin-top: var(--s2); }
-.case-p-big { font-size: clamp(19px, 1.9vw, 23px); line-height: 1.5; }
+.case-p-big { font-size: clamp(17px, 1.5vw, 19px); line-height: 1.5; }
 
 .case-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: var(--s3) var(--s4); margin: 0; padding-block: var(--s4); }
 .case-facts dt { opacity: 0.7; }
@@ -585,6 +594,19 @@ html:has(.case-page:not([style*="display"])) body { height: auto; overflow-x: hi
 
 /* how the images are made */
 .case-pair { background: #fff; transition: background-color 0.6s ease; }
+/* a page capture with its light/dark switch: the blue frame goes dark with it */
+.case-media-shot.case-pair { background: #c9d9f0; }
+.case-media-shot.case-pair.is-dark { background: #1d2230; }
+.case-media-shot.case-pair.is-dark figcaption { color: #e9edf5; }
+.case-pair-frame { position: relative; aspect-ratio: 16 / 10; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 2px rgb(20 32 64 / 0.06), 0 18px 40px -22px rgb(20 32 64 / 0.4); }
+.case-media-shot .case-pair-frame img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 0; box-shadow: none; }
+/* a screen recording in the same frame as the screenshots; it keeps its shape, so nothing jumps */
+.case-shot-frame { position: relative; aspect-ratio: 16 / 10; border-radius: 10px; overflow: hidden; background: #f5f0eb; box-shadow: 0 1px 2px rgb(20 32 64 / 0.06), 0 18px 40px -22px rgb(20 32 64 / 0.4); }
+.case-shot-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.case-shot-pause { position: absolute; right: 10px; bottom: 10px; display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 999px; background: rgb(255 255 255 / 0.92); color: var(--ink-deep); cursor: pointer; box-shadow: 0 1px 2px rgb(20 32 64 / 0.1), 0 6px 14px -8px rgb(20 32 64 / 0.4); transition: transform 0.25s cubic-bezier(0.3, 1.4, 0.5, 1); }
+.case-shot-pause::before { content: ""; position: absolute; inset: -6px; }
+.case-shot-pause:hover { transform: scale(1.06); }
+.case-shot-pause:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
 .case-pair.is-dark { background: #141518; }
 .case-pair img { inset: var(--s3); width: calc(100% - 2 * var(--s3)); height: calc(100% - 2 * var(--s3)); object-fit: contain; transition: opacity 0.6s ease; }
 .case-pair-dark, .case-pair.is-dark .case-pair-light { opacity: 0; }
@@ -614,10 +636,17 @@ html:has(.case-page:not([style*="display"])) body { height: auto; overflow-x: hi
 .case-film.is-playing .case-film-dot { opacity: 1; transform: scale(1.3); }
 
 .case-quote { margin: calc(var(--section) - var(--gap)) 0 0; padding-block: var(--s5); background: var(--leaf); color: var(--ink-deep); }
-.case-quote blockquote { margin: 0; max-width: 24ch; font-family: var(--font-flower), Georgia, serif; font-weight: 600; font-size: clamp(30px, 4.6vw, 54px); line-height: 1.08; letter-spacing: -0.02em; text-wrap: balance; }
+.case-quote blockquote { margin: 0; max-width: 24ch; font-family: var(--font-flower), Georgia, serif; font-weight: 600; font-size: clamp(26px, 3.2vw, 40px); line-height: 1.1; letter-spacing: -0.02em; text-wrap: balance; }
 .case-quote figcaption { margin-top: var(--s3); opacity: 0.8; }
 
 /* the journey: a row of green tiles with dot sculptures */
+/* the sales call, step by step, and where each step lives on the page */
+.case-map { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--gap); counter-reset: none; }
+.case-map-step { display: grid; align-content: start; gap: 6px; padding: var(--s2) var(--s2) var(--s3); border-radius: 18px; }
+.case-map-step img { width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: cover; margin-bottom: var(--s1); border-radius: 10px; background: #fff; box-shadow: 0 0 0 1px rgb(20 32 64 / 0.06), 0 10px 24px -16px rgb(20 32 64 / 0.35); }
+.case-map-step .case-num { padding: 0 var(--s1); }
+.case-map-call { margin: 0; padding: 0 var(--s1); font-family: var(--font-flower), Georgia, serif; font-weight: 600; font-size: 19px; line-height: 1.2; letter-spacing: -0.01em; color: var(--ink-deep); }
+.case-map-page { margin: 0; padding: 0 var(--s1); font-family: var(--font-text), Georgia, serif; font-size: 15px; line-height: 1.45; color: var(--ink-deep); text-wrap: pretty; }
 .case-journey { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--gap); }
 .case-step { position: relative; overflow: hidden; display: grid; grid-template-rows: auto 1fr; border-radius: 18px; color: var(--ink-deep); box-shadow: 0 1px 2px rgb(20 32 64 / 0.04), 0 10px 26px -14px rgb(20 32 64 / 0.16); }
 .case-step-art { aspect-ratio: 1; padding: var(--s3) var(--s3) 0; }
@@ -627,14 +656,36 @@ html:has(.case-page:not([style*="display"])) body { height: auto; overflow-x: hi
 .case-step p { margin: 0; font-family: var(--font-text), Georgia, serif; font-size: 15px; line-height: 1.45; }
 
 .case-results { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--gap); }
-.case-result { display: grid; gap: var(--s1); align-content: end; min-height: 200px; padding: var(--s3); background: var(--work); position: relative; overflow: hidden; }
-.case-figure { font-family: var(--font-flower), Georgia, serif; font-weight: 600; font-size: clamp(44px, 5vw, 60px); line-height: 1; letter-spacing: -0.025em; color: var(--ink); }
+.case-result { display: grid; gap: var(--s1); align-content: end; min-height: 200px; padding: var(--s3); position: relative; overflow: hidden; }
+.case-result:not(.tone-paper) { background: var(--work); }
+.case-figure { font-family: var(--font-flower), Georgia, serif; font-weight: 600; font-size: clamp(36px, 3.8vw, 46px); line-height: 1; letter-spacing: -0.025em; color: var(--ink); }
 .case-result .case-figure, .case-result .t-label { color: var(--paper); }
+/* under the hood: the same cards in paper, the facts in the name blue */
+.case-hood-lead { margin: 0 0 var(--s4); padding: 0 var(--s1); }
+.case-result-paper .case-figure { color: var(--ink); }
+.case-result-paper .t-label { color: var(--ink-deep); }
+/* what it would have cost: the wide card first, with the sum behind a disclosure */
+.case-results:has(.case-estimate) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.case-estimate { grid-column: 1 / -1; min-height: 0; padding: var(--s4); }
+.case-estimate > .t-label { max-width: 46ch; font-size: 15px; line-height: 1.45; }
+.case-sum { margin-top: var(--s2); color: var(--paper); font-family: var(--font-ui), system-ui, sans-serif; font-size: 13px; }
+.case-sum summary { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: rgb(255 255 255 / 0.14); cursor: pointer; list-style: none; }
+.case-sum summary::-webkit-details-marker { display: none; }
+.case-sum summary::after { content: "+"; opacity: 0.8; }
+.case-sum[open] summary::after { content: "−"; }
+.case-sum summary:focus-visible { outline: 2px solid var(--paper); outline-offset: 3px; }
+.case-sum ul { list-style: none; margin: var(--s2) 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 6px var(--s4); max-width: 900px; }
+.case-sum li span:last-child { white-space: nowrap; }
+.case-sum li { display: flex; justify-content: space-between; gap: var(--s2); padding: 6px 0; border-bottom: 1px solid rgb(255 255 255 / 0.18); font-variant-numeric: tabular-nums; }
+.case-sum p { margin: var(--s2) 0 0; opacity: 0.75; }
 
 .case-next { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); margin-top: calc(var(--section) - var(--gap)); padding-block: var(--s4); transition: transform 0.35s cubic-bezier(0.3, 1.4, 0.5, 1); }
 .case-next:hover { transform: translateY(-2px); }
+/* the live site, just before the next case: same card, paper, the arrow pointing out */
+.case-visit + .case-next, .case-talk + .case-next { margin-top: var(--gap); }
+.case-visit .case-visit-arrow svg { transform: rotate(-45deg); }
 .case-next .t-label { display: block; opacity: 0.75; }
-.case-next-title { display: block; margin-top: 6px; font-family: var(--font-flower), Georgia, serif; font-weight: 600; font-size: clamp(30px, 4.4vw, 48px); letter-spacing: -0.02em; }
+.case-next-title { display: block; margin-top: 6px; font-family: var(--font-flower), Georgia, serif; font-weight: 600; font-size: clamp(26px, 3vw, 36px); letter-spacing: -0.02em; }
 
 @media (max-width: 860px) {
   .case-head { grid-template-columns: 1fr; padding-bottom: var(--s4); }
@@ -649,6 +700,8 @@ html:has(.case-page:not([style*="display"])) body { height: auto; overflow-x: hi
   .case-recipe { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .case-closeups { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .case-films { grid-template-columns: 1fr; }
+  .case-map { grid-template-columns: repeat(4, 78%); overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 4px; }
+  .case-map-step { scroll-snap-align: start; }
   .case-journey { grid-template-columns: repeat(4, 72%); overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 4px; }
   .case-step { scroll-snap-align: start; }
   .case-hero .film-stage { height: auto; min-height: 0; aspect-ratio: 600 / 340; margin: 8px; border-radius: 12px; }
@@ -680,7 +733,241 @@ html:active-view-transition-type(nav-back)::view-transition-image-pair(.case-mor
   ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
 }
 @media (max-width: 560px) {
-  .case-results { grid-template-columns: 1fr; }
+  .case-results, .case-results:has(.case-estimate) { grid-template-columns: 1fr; }
   .case-recipe { grid-template-columns: 1fr; }
   .case-result { min-height: 0; grid-template-columns: auto 1fr; align-items: baseline; gap: 14px; padding: 18px 22px; }
+  .case-estimate { grid-template-columns: 1fr; padding: var(--s3); }
 }
+
+/* ------------------------------------------------------------------ home, one section at a time
+   Modern and minimal: a warm light grey page, white containers, one plain sans (Inter),
+   near-black text with a warm grey for anything secondary. Colour only lives inside the work.
+   1. the first screen: name, title and one line, centred and quiet; below, the three cases
+      on an endless sideways row that bends at the screen edges (see home/CaseRail) */
+.home {
+  --bg: #f2f0ec; /* the reference grey (#f3f3f3), warmed a touch */
+  --text: #1c1b19;
+  --muted: #8b8780;
+  --hair: rgb(28 27 25 / 0.07);
+  color: var(--text);
+  font-family: var(--font-ui), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+html:has(.home),
+html:has(.home) body { height: auto; overflow-x: hidden; overflow-y: auto; overscroll-behavior-x: none; background: #f2f0ec; }
+.home-first { display: flex; flex-direction: column; min-height: 100svh; }
+.home-intro { padding: clamp(48px, 13svh, 150px) 24px 0; text-align: center; }
+.home-name, .home-title { margin: 0; font-size: 16px; font-weight: 500; line-height: 1.35; letter-spacing: -0.01em; }
+.home-title { color: var(--muted); font-weight: 400; }
+.home-line {
+  margin: clamp(28px, 7svh, 72px) auto 0;
+  max-width: 34rem;
+  font-size: 16px;
+  line-height: 1.55;
+  letter-spacing: -0.005em;
+  color: var(--text);
+  text-wrap: balance;
+}
+.case-rail {
+  position: relative;
+  flex: 1;
+  min-height: 220px;
+  margin: clamp(24px, 6svh, 72px) 0 clamp(28px, 7svh, 84px);
+  overflow-x: clip;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
+}
+.case-rail[data-dragging] { cursor: grabbing; }
+/* the drawn, bent edges: a band 2.8 cards tall around the row, under the real cards */
+.case-rail-gl { position: absolute; left: 0; right: 0; top: 50%; height: var(--gl-h, 0); translate: 0 -50%; pointer-events: none; visibility: hidden; mask-image: linear-gradient(transparent, #000 26%, #000 74%, transparent); }
+.case-rail-card {
+  position: absolute;
+  left: calc(50% - var(--card-w, 0px) / 2);
+  top: calc(50% - var(--card-h, 0px) / 2);
+  width: var(--card-w, 0px);
+  height: var(--card-h, 0px);
+  border-radius: 18px;
+  will-change: transform;
+  box-shadow: 0 0 0 1px rgb(28 27 25 / 0.06);
+}
+.case-rail-card img, .case-rail-card video { -webkit-user-drag: none; }
+
+/* the case cards on the home page: white, no grain, the film on a hairline-edged screen,
+   the name and line in the same plain sans, the way in a small black circle */
+.home .lin-tile { --cb: var(--text); background: #fff; color: var(--text); }
+.home .lin-tile::before { display: none; }
+.home .film-stage { outline: 1px solid var(--hair); outline-offset: -1px; }
+.home .lin-title { font-family: var(--font-ui), system-ui, sans-serif; font-weight: 500; font-size: calc(15px * var(--ui)); letter-spacing: -0.01em; color: var(--text); }
+.home .lin-line { font-family: var(--font-ui), system-ui, sans-serif; font-variation-settings: normal; font-size: calc(14px * var(--ui)); margin-top: 3px; color: var(--muted); }
+.home .case-cta { background: var(--text); color: #fff; box-shadow: none; }
+.home .case-cta:hover, .home .case-cta:focus-visible { box-shadow: 0 8px 18px -8px rgb(28 27 25 / 0.5); }
+.home .case-cta::after { display: none; }
+
+@media (max-width: 759px) {
+  .home-line { font-size: 15px; }
+}
+
+/* 2. a bit about me: a ring of circles, lying tilted and turning (see home/AboutRing) */
+.about-ring {
+  /* glass: mostly white, a little see-through, lighter at the top like a lit surface */
+  --glass: linear-gradient(160deg, rgb(255 255 255 / 0.9), rgb(255 255 255 / 0.7));
+  /* --ring, --dot, --big and the shift are set by AboutRing to fill the screen; fallbacks here */
+  --ring: min(60vw, 60svh);
+  --dot: calc(var(--ring) * 0.48);
+  /* rounded squares, cornered like the case cards in the first section (18px on a card),
+     as a share of each one's own size so they stay the same shape at any size */
+  --corner: 4.5%;
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 100svh;
+  /* room above, so the case row's bent edges fade out softly before the circles start */
+  margin-top: clamp(80px, 18svh, 220px);
+  overflow: hidden;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
+}
+.about-ring[data-dragging] { cursor: grabbing; }
+.about-ring-stage { perspective: 1600px; translate: var(--shift-x, 0) var(--shift-y, 0); will-change: filter; }
+/* lean back, then a little to the left (the same angles as in AboutRing) */
+.about-ring-tilt { transform: rotateX(54deg) rotateY(-14deg); transform-style: preserve-3d; }
+.about-ring-spin {
+  position: relative;
+  width: var(--ring);
+  height: var(--ring);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  transform-style: preserve-3d;
+  /* only the circles answer the pointer (in 3D the ring's own box would otherwise catch it
+     in front of the circles at the back) */
+  pointer-events: none;
+}
+/* every circle sits exactly on the line, the same angle apart */
+.about-ring-slot {
+  position: absolute;
+  left: calc(50% - var(--dot) / 2);
+  top: calc(50% - var(--dot) / 2);
+  width: var(--dot);
+  height: var(--dot);
+  transform: rotate(calc(360deg / var(--n) * var(--i))) translateY(calc(var(--ring) / -2)) scaleX(calc(1 + var(--bend, 0)));
+  transform-style: preserve-3d; /* so the edge discs sit behind the face, in depth */
+}
+/* the side of each circle: thin discs stacked behind the face, 1px apart, as clear glass
+   (the ui-ux-pro-max glassmorphism recipe: translucent white, a fine light border; no shadow) */
+.about-ring-edge {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--corner);
+  pointer-events: none;
+  transform: translateZ(calc(var(--k) * -1px));
+  background: rgb(255 255 255 / 0.35);
+  border: 1px solid rgb(255 255 255 / 0.85);
+}
+/* the glass rim of each face: a thin bright band round the edge, a line of light along it */
+.about-ring-dot::after,
+.about-ring-face::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--corner);
+  pointer-events: none;
+  box-shadow: inset 0 1px 0 #fff, inset 0 0 0 1px rgb(255 255 255 / 0.9), inset 0 0 0 6px rgb(255 255 255 / 0.28);
+}
+/* ponytail: no live backdrop blur here; it halved the frame rate in the turning ring and on
+   the lifted circle. Add `backdrop-filter: blur(14px)` to .about-ring-face::after if a
+   real frosted rim is worth that. */
+.about-ring-dot {
+  pointer-events: auto;
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: var(--corner);
+  /* clean glass: mostly white, a little see-through, no shadow */
+  background: var(--glass);
+  overflow: hidden;
+  cursor: pointer;
+}
+.about-ring-dot:focus-visible { outline: 3px solid var(--text, #1c1b19); outline-offset: 6px; }
+/* while a circle is lifted, its place in the ring stays empty */
+.about-ring-dot.is-lifted { visibility: hidden; }
+/* the lifted circle: drawn at full size and scaled, so it's crisp once it stands in the middle */
+.about-ring-lift {
+  position: fixed; /* centred on the screen; AboutRing sets its size and path */
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  translate: -50% -50%;
+  transform-style: preserve-3d; /* its edge discs sit behind its face, like in the ring */
+  visibility: hidden;
+  pointer-events: none;
+  will-change: transform;
+}
+.about-ring-face {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--corner);
+  /* the same glass; lifted, the blurred ring behind shows softly through it, like frosted glass */
+  background: var(--glass);
+  overflow: hidden;
+}
+
+/* what's inside a circle: laid out once at the lifted circle's size (--content) and shrunk
+   to fit a ring circle (--k-dot), so it never re-lays out mid-lift. The board's rectangles,
+   restyled for the home page: white, the plain sans, words centred so the round edge never
+   cuts them. */
+.about-ring-content {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--content, 600px);
+  height: var(--content, 600px);
+  transform-origin: 0 0;
+  border-radius: var(--corner);
+  overflow: hidden;
+  --ui: var(--content-ui, 1.5);
+  --pad: calc(var(--content, 600px) * 0.15);
+  font-family: var(--font-ui), system-ui, sans-serif;
+  color: var(--text);
+  --leaf: #fff; /* drawings that cut shapes out of the old green (the moon) now cut out of white */
+}
+/* the circles lie in the turning ring; what's inside each one turns back by the ring's
+   turn (and the circle's place on it), so it always stays the right way up */
+.about-ring-dot .about-ring-content {
+  transform:
+    scale(var(--k-dot, 0.4))
+    translate(calc(var(--content, 600px) / 2), calc(var(--content, 600px) / 2))
+    rotate(calc(-1deg * (var(--spin, 0) + 360 / var(--n) * var(--i))))
+    translate(calc(var(--content, 600px) / -2), calc(var(--content, 600px) / -2));
+}
+.about-ring-content .tile { background: transparent; color: var(--text); } /* the glass shows through */
+.about-ring-content .linen { background-image: none; }
+.about-ring-content .t-label,
+.about-ring-content .t-body,
+.about-ring-content .t-title { font-family: var(--font-ui), system-ui, sans-serif; font-variation-settings: normal; letter-spacing: -0.01em; }
+.about-ring-content .t-label { color: var(--muted); opacity: 1; }
+.about-ring-content .tile-grid { padding: 14% 18%; text-align: center; }
+.about-ring-content .tile-label { justify-content: center; }
+/* what each one shows sits in its middle (the words run round the edge instead) */
+.about-ring-content .tile-stage { display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 0; }
+
+/* How I think, inside its circle: label on top, the sculpture in the upper middle, the
+   question and its line centred underneath (all within the round edge) */
+.how-think-art { position: absolute; inset: 16%; }
+
+/* words bent along a circle's round edge (see CurvedText): an SVG over the whole circle, its
+   type sized in the circle's own units, so it grows and shrinks with it */
+/* the toolbox tags, a size that fits all seven inside the circle */
+.about-ring-content .tool-tag { font-size: calc(12px * var(--ui)); padding: 0.4em 0.85em 0.4em 0.6em; gap: 0.5em; }
+.curved-text { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.curved-text text { font-family: var(--font-ui), system-ui, sans-serif; }
+.curved-title { fill: var(--text); font-weight: 500; }
+.curved-dot, .curved-line { fill: var(--muted); }

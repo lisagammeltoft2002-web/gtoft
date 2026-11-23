@@ -4,11 +4,12 @@ import { ViewTransition } from "react";
 import { Arrow } from "@/components/cases/Film";
 import { Journey } from "./Journey";
 import { HoverVideo } from "./HoverVideo";
+import { InViewVideo } from "./InViewVideo";
 import { ThemePair } from "./ThemePair";
 import { VeloryComCase } from "@/components/cases/VeloryComCase";
 import { StudioCase } from "@/components/cases/StudioCase";
 import { InsightsCase } from "@/components/cases/InsightsCase";
-import { board, caseStudies, type CaseMedia, type ImageSystem } from "@/content/site";
+import { board, caseStudies, site, type CaseMedia, type ImageSystem } from "@/content/site";
 
 /* A case study's own page: the home page tile, opened. Going in, the blue tile grows until it
    fills the window, its video, name and number staying where they were; the whole page is
@@ -54,6 +55,7 @@ export function CasePage({ slug }: { slug: string }) {
             <div className="case-split">
               <div className="case-card tone-paper case-text">
                 <p className="case-eyebrow">The problem</p>
+                {c.problemTitle && <h2 className="case-h3">{c.problemTitle}</h2>}
                 {c.problem.map((p, i) => (
                   <p key={i} className="case-p">
                     {p}
@@ -80,6 +82,23 @@ export function CasePage({ slug }: { slug: string }) {
             <figcaption className="t-label">{c.insight.note}</figcaption>
           </figure>
 
+          {c.salesMap && (
+            <section className="case-section">
+              <SectionHead eyebrow="From sales call to page" title={c.salesMap.title} />
+              <ol className="case-map">
+                {c.salesMap.steps.map((st, i) => (
+                  <li key={st.call} className="case-card tone-paper case-map-step">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={st.image.src} alt={st.image.alt} width={960} height={600} loading="lazy" />
+                    <span className="case-num">{String(i + 1).padStart(2, "0")}</span>
+                    <p className="case-map-call">{st.call}</p>
+                    <p className="case-map-page">{st.page}</p>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          )}
+
           {c.journey.length > 0 && (
             <section className="case-section">
               <SectionHead eyebrow="The journey" title="How it came together" />
@@ -93,7 +112,6 @@ export function CasePage({ slug }: { slug: string }) {
               {c.decisions.map((d, i) => (
                 <div key={d.title} className={`case-split ${i % 2 ? "case-split-flip" : ""}`}>
                   <div className="case-card tone-paper case-text">
-                    <span className="case-num">{String(i + 1).padStart(2, "0")}</span>
                     <h3 className="case-h3">{d.title}</h3>
                     <p className="case-p">{d.body}</p>
                   </div>
@@ -105,9 +123,42 @@ export function CasePage({ slug }: { slug: string }) {
 
           {c.imageSystem && <ImageSystemSection s={c.imageSystem} />}
 
+          {c.underHood && (
+            <section className="case-section">
+              <SectionHead eyebrow="Under the hood" title={c.underHood.title} />
+              <p className="case-p case-p-big case-hood-lead">{c.underHood.lead}</p>
+              <div className="case-results">
+                {c.underHood.facts.map((f) => (
+                  <div key={f.value} className="case-card tone-paper case-result case-result-paper">
+                    <span className="case-figure">{f.value}</span>
+                    <span className="t-label">{f.label}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
           <section className="case-section">
             <SectionHead eyebrow="Results" title="What it changed" />
             <div className="case-results">
+              {c.estimate && (
+                <div className="case-card case-result case-estimate">
+                  <span className="case-figure">{c.estimate.value}</span>
+                  <span className="t-label">{c.estimate.label}</span>
+                  <details className="case-sum">
+                    <summary>How I counted</summary>
+                    <ul>
+                      {c.estimate.rows.map((r) => (
+                        <li key={r.piece}>
+                          <span>{r.piece}</span>
+                          <span>{r.hours} h</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <p>{c.estimate.note}</p>
+                  </details>
+                </div>
+              )}
               {c.results.map((r) => (
                 <div key={r.label} className="case-card case-result">
                   <span className="case-figure">{r.value}</span>
@@ -128,6 +179,29 @@ export function CasePage({ slug }: { slug: string }) {
             </div>
           </section>
 
+          {c.live && (
+            <a href={c.live.url} target="_blank" rel="noopener noreferrer" className="case-card tone-paper case-next case-visit">
+              <span>
+                <span className="t-label">See it live</span>
+                <span className="case-next-title">{c.live.label}</span>
+              </span>
+              <span className="sr-only">(opens in a new tab)</span>
+              <span className="case-cta case-visit-arrow" aria-hidden="true">
+                <Arrow />
+              </span>
+            </a>
+          )}
+
+          <a href={`mailto:${site.email}`} className="case-card tone-leaf case-next case-talk">
+            <span>
+              <span className="t-label">Want to hear more about this one?</span>
+              <span className="case-next-title">Let’s talk</span>
+            </span>
+            <span className="case-cta case-cta-dark" aria-hidden="true">
+              <Arrow />
+            </span>
+          </a>
+
           <Link href={`/work/${next.slug}`} transitionTypes={["nav-forward"]} className="case-card tone-sun case-next">
             <span>
               <span className="t-label">Next case</span>
@@ -143,11 +217,15 @@ export function CasePage({ slug }: { slug: string }) {
   );
 }
 
+/* a section opens with its claim; the small label above it only repeated the heading, so it
+   stays out of sight and is read only by screen readers */
 function SectionHead({ eyebrow, title }: { eyebrow: string; title: string }) {
   return (
     <header className="case-section-head">
-      <p className="case-eyebrow">{eyebrow}</p>
-      <h2 className="case-h2">{title}</h2>
+      <h2 className="case-h2">
+        <span className="sr-only">{eyebrow}: </span>
+        {title}
+      </h2>
     </header>
   );
 }
@@ -212,6 +290,16 @@ function ImageSystemSection({ s }: { s: ImageSystem }) {
 /* a screenshot in a home-page container; until Lisa adds one, a calm placeholder that says
    what belongs there. Page screenshots ("shot") sit framed on light blue, product stills on white. */
 function Media({ image, hint }: { image?: CaseMedia; hint: string }) {
+  if (image?.kind === "video" && image.video)
+    return (
+      <figure className="case-media case-media-shot">
+        <div className="case-shot-frame">
+          <InViewVideo base={image.video} poster={image.src} label={image.alt} />
+        </div>
+        {image.caption && <figcaption className="t-label">{image.caption}</figcaption>}
+      </figure>
+    );
+  if (image?.kind === "pair" && image.dark) return <ThemePair light={image.src} dark={image.dark} alt={image.alt} caption={image.caption ?? ""} />;
   if (image?.kind === "shot")
     return (
       <figure className="case-media case-media-shot">

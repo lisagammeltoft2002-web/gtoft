@@ -44,14 +44,14 @@ export const board = {
   },
   about: {
     hello: "A bit about me",
-    facts: ["Lived in Australia", "Cheerleading world championships", "75 Hard"],
+    facts: ["Lived in Australia", "Cheer worlds", "75 Hard"],
   },
   /* each case study's rectangle: its name, what I did, and the two numbers worth knowing */
   cases: {
     "velory-com": {
       title: "velory.com",
-      role: "A fresher landing page, same brand.",
-      metrics: [{ figure: "1 field", label: "to book a demo, was 5" }],
+      role: "A website for the people who now buy Velory.",
+      metrics: [{ figure: "4 mo", label: "research to live site" }],
     },
     "velory-studio": {
       title: "Velory Studio",
@@ -83,12 +83,17 @@ export const bring = [
 ];
 
 /* How I work: four beats, written across the sky while one bird flies. */
-export const process = [
-  { label: "Journeys" },
-  { label: "People" },
-  { label: "Business" },
-  { label: "Build" },
-];
+/* How I think: the four questions I always ask, in the order they come up, each with one
+   line and a dot sculpture (a shape from journeyShapes.ts) */
+export const howIThink = {
+  label: "How I think",
+  steps: [
+    { question: "Who is it for?", line: "I talk to them before I draw.", shape: "people" },
+    { question: "What are they trying to do?", line: "I map the whole journey.", shape: "map" },
+    { question: "Why does it matter?", line: "Every choice ties to a goal.", shape: "coins" },
+    { question: "Does it really work?", line: "I test it with real people.", shape: "magnifier" },
+  ],
+};
 
 export const journey = {
   opening: "I don’t start with a page. I start with a journey.",
@@ -143,7 +148,7 @@ export const about = {
     { label: "Based in", value: "Stockholm" },
     { label: "Studied", value: "Hyper Island, two years · Psychology and behaviour" },
     { label: "Now", value: "Product engineer at Velory" },
-    { label: "Toolbox", value: "Figma, Webflow, Next.js, React, Claude Code" },
+    { label: "Toolbox", value: "Figma, Webflow, Next.js, React, Claude Code, GitHub, Illustrator" },
   ],
   /* the sideways walk through what I make, one line per drawing */
   walk: [
@@ -184,6 +189,8 @@ export type CaseStudy = {
   outcome: string;
   meta: { label: string; value: string }[];
   problem: string[];
+  /** the problem section's heading, a claim (optional) */
+  problemTitle?: string;
   role: string[];
   insight: { quote: string; note: string };
   /** four steps, each drawn as a dot sculpture (shape: a name from journeyShapes.ts) */
@@ -196,19 +203,31 @@ export type CaseStudy = {
   problemStrip?: { src: string; quote: string }[];
   /** how the case's images were made (velory.com) */
   imageSystem?: ImageSystem;
+  /** how a good sales call maps onto the page, step by step, each with a real image */
+  salesMap?: { title: string; steps: { call: string; page: string; image: { src: string; alt: string } }[] };
+  /** how it was built, a few facts in a row (velory.com) */
+  underHood?: { title: string; lead: string; facts: { value: string; label: string }[] };
   solution: { src: string; alt: string; caption: string }[];
   results: { value: string; label: string }[];
+  /** what the same work would have cost bought in, with the sum shown on request */
+  estimate?: { value: string; label: string; note: string; rows: { piece: string; hours: number }[] };
   reflection: string[];
+  /** the live site, linked near the end */
+  live?: { url: string; label: string };
 };
 
 /** an image beside a text card. "shot" = a page screenshot framed on blue,
     "still" = a transparent product close-up on white; a video plays on hover. */
 export type CaseMedia = {
+  /** the image; for "video" the poster (first frame); for "pair" the light version */
   src: string;
   alt: string;
-  kind?: "shot" | "still";
+  /** "video" = a screen recording that plays while in view (`video` = path without extension,
+      .webm and .mp4 beside it); "pair" = light and dark captures with a switch (`dark`) */
+  kind?: "shot" | "still" | "video" | "pair";
   caption?: string;
   video?: string;
+  dark?: string;
 };
 
 export type ImageSystem = {
@@ -230,7 +249,7 @@ const V = "/images/work/velory-com";
 export const caseStudies: CaseStudy[] = [
   {
     slug: "velory-com",
-    short: "A new website that sells the way sales does.",
+    short: "A website for the people who now buy Velory.",
     url: "velory.com",
     title: "velory.com",
     kind: "Website · UX, design and build",
@@ -241,145 +260,139 @@ export const caseStudies: CaseStudy[] = [
       alt: "Layer Up poster: a fleece jacket on a blue panel over snowy mountains",
     },
     outcome:
-      "A new website built around how Velory actually sells: problem first, proof early, and a demo that asks for one field. Research to launch in four months.",
+      "Velory started selling to IT admins. Its website was still talking to employees. So I pushed to rebuild it around the person who now buys it, from research to live site in four months.",
     meta: [
-      {
-        label: "Role",
-        value: "Research, information architecture, design, motion and build",
-      },
-      { label: "Team", value: "Just me, with input from sales" },
-      { label: "Timeline", value: "About four months" },
+      { label: "Role", value: "My initiative: research, story, design, motion and build" },
+      { label: "Team", value: "Me. Copy by Marielle (marketing), input from sales and IT admins" },
+      { label: "Timeline", value: "Four months, research to launch" },
       {
         label: "Tools",
         value: "Figma, Webflow, coded components, Claude Code, HubSpot",
       },
     ],
+    problemTitle: "We were losing deals to better-looking websites.",
     problem: [
-      "Velory had launched a new product, but the website still sold the old one. The headline, “IT Lifecycle on Autopilot”, could describe almost any software, the page read like a feature list, and the demo form asked for five things before anyone could talk to us.",
-      "The brief: make velory.com feel as new as the product and speak to the people who buy it, IT admins. The constraint: no rebrand. Same logo, same colours, same type.",
+      "Velory began as an employee perk: people picked a new laptop inside their budget. Then the product grew up. The new portal was built for IT admins, with every laptop, licence, phone plan and AI seat in one place, and ways to save money on all of it.",
+      "The website still spoke to employees, and it looked its age. Sales kept hearing it from leads who walked away: next to a competitor’s modern site, ours made them doubt the product. And people in demos were surprised by features the site never showed.",
+      "Nobody asked for a new site. I pushed for one, with one rule: no rebrand.",
     ],
     role: [],
     insight: {
       quote:
         "Good sales calls don’t start with features. They start with pain.",
-      note: "What I learned from sitting with our sales team",
+      note: "What I took from a sales webinar, and heard again from every seller I interviewed",
     },
-    journey: [
-      { label: "Listen to sales", note: "Sat in on calls to hear how our best sellers tell the story.", shape: "bubble" },
-      { label: "Problems first", note: "Turned that story into a page that opens with the pain admins know.", shape: "sections" },
-      { label: "Design and build", note: "A real design system in Webflow, built by me, component by component.", shape: "browser" },
-      { label: "One field", note: "The demo form went from five fields and a captcha to one email.", shape: "plane" },
-    ],
+    /* the journey's four steps said the same as the decisions; the sales-call map below
+       replaces it on this page */
+    journey: [],
+    salesMap: {
+      title: "The page follows a good sales call",
+      steps: [
+        {
+          call: "Start with the problems they recognise",
+          page: "“Which one sounds like your week?”: five pains, in admins’ own words",
+          image: { src: `${V}/map-1.webp`, alt: "One of the five pain cards: a person, their laptop and apps, and a phone marked missing" },
+        },
+        {
+          call: "Then proof from peers",
+          page: "Customer numbers right under the hero, from teams like Voyado, ZeroNorth and ZoCom",
+          image: { src: `${V}/map-2.webp`, alt: "Trusted by top teams: customer logos with results like 80% faster forecasting and 20 h a month freed" },
+        },
+        {
+          call: "Then the platform",
+          page: "The product itself: real portal close-ups and the lifecycle ring",
+          image: { src: `${V}/map-3.webp`, alt: "A portal close-up: Mei Lin’s laptop, licences and phone plan with their monthly costs" },
+        },
+        {
+          call: "Then a way to try it",
+          page: "Book a demo with one field: a work email",
+          image: { src: `${V}/map-4.webp`, alt: "The book-a-demo page: “See how Velory would run your IT” and a form with only a work email field" },
+        },
+      ],
+    },
     problemImage: {
       src: `${V}/before-hero.webp`,
       alt: "The old velory.com: a laptop with the portal on the left, the headline on the right, a pastel wave below",
       kind: "shot",
-      caption: "Before · velory.com",
+      caption: "Before · “IT Lifecycle on Autopilot”, and a demo that welcomes an employee, not an IT admin",
     },
-    problemStrip: [
-      { src: `${V}/problem-1.webp`, quote: "I can’t say what IT actually costs." },
-      { src: `${V}/problem-2.webp`, quote: "I set up every new starter by hand." },
-      { src: `${V}/problem-3.webp`, quote: "I lose track of what leavers had." },
-      { src: `${V}/problem-4.webp`, quote: "Every audit costs me a full day." },
-      { src: `${V}/problem-5.webp`, quote: "I can’t keep track of every team in several countries." },
-    ],
     decisions: [
       {
-        title: "Built the story sales already tells",
-        body: "I mapped how our best sellers run a call and turned it into the page: the problems IT admins recognise, then proof from peers, then the platform, then a way to try it.",
+        title: "Open with their week, not our features",
+        body: "Picture an IT admin on a Friday, still chasing a laptop from someone who left in March. The page meets them there: five situations in their own words, each leading to the part of Velory that fixes it. After that, booking a demo takes one field.",
         image: {
-          src: `${V}/after-hero.webp`,
-          alt: "The new velory.com hero: “The engine that runs IT lifecycle management” over a blurred, tilted view of the portal",
-          kind: "shot",
-          caption: "After · the new hero",
+          kind: "video",
+          src: `${V}/pains-poster.webp`,
+          video: `${V}/pains`,
+          alt: "Scrolling through “Which one sounds like your week?”: five pain cards slide past one by one, then settle into a row",
+          caption: "Which one sounds like your week? · the five pains, as you scroll",
         },
       },
       {
-        title: "Problems first",
-        body: "A new section asks “Which one sounds like your week?” and answers with five situations admins know from last Tuesday, like “I lose track of what leavers had”. Each one links straight to the page that solves it.",
+        title: "Look like the product they’ll log into",
+        body: "Leads judge the portal by its website, so the site had to feel like the portal. Same logo, colours and type, rebuilt as a design system with more air and one accent for actions. And because many IT admins work in dark mode, the whole site follows them there.",
         image: {
-          src: `${V}/after-problems-grid.webp`,
-          alt: "Five cards under “Which one sounds like your week?”, each with a small red drawing and a quote",
-          kind: "shot",
-          caption: "Which one sounds like your week?",
+          kind: "pair",
+          src: `${V}/site-light.webp`,
+          dark: `${V}/site-dark.webp`,
+          alt: "The new velory.com hero, “The engine that runs IT lifecycle management”, in light and dark mode",
+          caption: "Try the switch: the same page, light and dark",
         },
       },
       {
-        title: "Modern without a rebrand",
-        body: "I turned the brand into a real design system in Webflow: colour, type, spacing and radius tokens, a louder heading scale and one accent colour reserved for actions.",
+        title: "Show the product, not a laptop",
+        body: "Prospects used to discover Velory’s features in the demo. Now the page shows them first: real close-ups from the portal, made in Velory Studio, and motion that explains. The lifecycle draws itself as you scroll, until eight stages close into one ring.",
         image: {
-          src: `${V}/after-features.webp`,
-          alt: "Feature cards for Visibility, Onboarding, Offboarding and Cost control, each with a product close-up",
-          kind: "shot",
-          caption: "Built for the jobs IT actually runs",
-        },
-      },
-      {
-        title: "One field to start",
-        body: "The demo form went from five required fields and a captcha to an email address, wired into HubSpot so sales workflows still run.",
-        image: {
-          src: `${V}/after-demo.webp`,
-          alt: "The book-a-demo page: a short promise on the left and a form with only a work email field on the right",
-          kind: "shot",
-          caption: "One field · work email",
-        },
-      },
-      {
-        title: "Motion that explains",
-        body: "The lifecycle draws itself as you scroll, one stage at a time, until all eight close into a ring around the logo. A pinned feature scroll and small rewards on the call to action follow. Every animation has to explain something and respects reduced motion.",
-        image: {
-          src: `${V}/after-lifecycle.webp`,
-          alt: "The lifecycle ring: eight stages from Connect to Secure around the Velory logo",
-          kind: "shot",
-          caption: "Eight stages, one ring",
+          kind: "video",
+          src: `${V}/lifecycle-poster.webp`,
+          video: `${V}/lifecycle`,
+          alt: "Scrolling through the lifecycle: a new hire travels from Connect to Secure until eight stages close into a ring around the Velory logo",
+          caption: "The lifecycle ring · words and scroll by me",
         },
       },
     ],
-    /* DRAFT copy: Lisa to check the lead, steps and why */
-    imageSystem: {
-      lead: "Every image on the new site is the product itself. I made them in Velory Studio, the tool I built, starting from real portal views.",
-      why: "Screenshots age with every release and show everything at once. A close-up shows one idea, stays on-brand, and anyone at Velory can make a new one in minutes, so the site can stay as fresh as the product.",
-      steps: [
-        { title: "Portal view", body: "Every image starts from a real screen in the Velory portal, never a mock-up." },
-        { title: "One close-up", body: "Crop to the one moment that matters, like Omar’s licences revoked on his last day, with depth and blur around it." },
-        { title: "Same people", body: "Licensed demo faces, cast once, so Grace, Omar and Mei Lin come back from page to page." },
-        { title: "Light, dark and film", body: "Every scene renders in both themes to follow the site’s toggle. Scenes that show change become 30 fps loops." },
-      ],
-      pair: {
-        light: `${V}/grace.webp`,
-        dark: `${V}/grace-dark.webp`,
-        alt: "Grace Adeyemi’s assets: MacBook Air 13 (delivered), iPhone 16, a design tool and a mobile plan",
-      },
-      closeUps: [
-        { src: `${V}/close-visibility.webp`, label: "Visibility" },
-        { src: `${V}/close-onboarding.webp`, label: "Onboarding" },
-        { src: `${V}/close-offboarding.webp`, label: "Offboarding" },
-        { src: `${V}/close-cost-control.webp`, label: "Cost control" },
-        { src: `${V}/close-shadow-it-ai.webp`, label: "Shadow IT & AI" },
-        { src: `${V}/close-global-it.webp`, label: "Global IT" },
-      ],
-      films: [
-        { src: `${V}/film-mei-lin.webm`, poster: `${V}/poster-mei-lin.webp`, label: "Mei Lin joins Engineering" },
-        { src: `${V}/film-one-employee.webm`, poster: `${V}/poster-one-employee.webp`, label: "One employee, every asset", start: 4.5 },
-        { src: `${V}/film-ai-seats.webm`, poster: `${V}/poster-ai-seats.webp`, label: "Reclaim 6 AI seats" },
-      ],
-      stats: [
-        { value: "21", label: "scenes on the home page" },
-        { value: "×2", label: "every scene in light and dark" },
-        { value: "7", label: "films, 30 fps loops" },
+    underHood: {
+      title: "Designed and coded as one system",
+      lead: "I built the site in Webflow with my own React components, written with Claude Code and kept in GitHub. Marketing still changes words and images in Webflow, without touching code.",
+      facts: [
+        { value: "26", label: "components I coded, placed in Webflow like any other block" },
+        { value: "176", label: "reviewed changes, each one recorded and easy to undo" },
       ],
     },
     solution: [],
+    /* PLACEHOLDER: replace with real numbers before publishing (demo requests from HubSpot,
+       bounce and pain-card clicks from analytics). These three are made up. */
     results: [
-      { value: "4 mo", label: "research to live site" },
-      { value: "26", label: "coded components" },
-      { value: "176", label: "pull requests merged" },
-      { value: "1", label: "field in the demo form" },
+      { value: "+38%", label: "demo requests a month" },
+      { value: "−24%", label: "bounce rate on the home page" },
+      { value: "1 in 3", label: "visitors open a pain card" },
     ],
+    /* a benchmark, not a quote: page counts from the velory.com sitemap, hours per piece
+       estimated from published freelance ranges, at our old design consultant's 105 €/h */
+    estimate: {
+      value: "≈ 91 000 €",
+      label: "what this site would have cost with our design consultant: about 870 hours at 105 € an hour. I designed and built it in-house instead.",
+      note: "Page counts are from the site; hours per piece are my estimate from published freelance ranges.",
+      rows: [
+        { piece: "Research, interviews and structure", hours: 30 },
+        { piece: "Design system", hours: 50 },
+        { piece: "Home page, with motion", hours: 100 },
+        { piece: "9 platform pages", hours: 126 },
+        { piece: "6 solution pages", hours: 84 },
+        { piece: "7 conversion pages (pricing, demo…)", hours: 84 },
+        { piece: "9 hub pages (blog, integrations…)", hours: 72 },
+        { piece: "7 CMS templates", hours: 70 },
+        { piece: "26 code components", hours: 104 },
+        { piece: "21 product scenes in light and dark, 7 films", hours: 70 },
+        { piece: "QA and revisions", hours: 79 },
+      ],
+    },
     reflection: [
-      "Sales already knows the story; put it on the page. And you can make a brand feel new without rebranding it, through discipline in type, colour, spacing and motion.",
-      "Building with AI removed the gap between an idea and a live site. The research, story, taste and decisions were mine; what changed is that one person can take all of it the whole way.",
+      "A website is part of the product. If it looks old, people assume the product is too, long before they ever log in.",
+      "Sales already knew the story. My job was to listen, then put it on the page.",
+      "Building with AI closed the gap between an idea and a live site. The research, the story and the taste were mine; what changed is that one person could carry all of it to launch.",
     ],
+    live: { url: "https://velory.com", label: "velory.com" },
   },
   {
     slug: "velory-portal",

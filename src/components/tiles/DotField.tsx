@@ -32,9 +32,9 @@ export function DotField({ place, label, strength = 1, burst = false, origin = [
     let home = new Float32Array(0), push = new Float32Array(0), vel = new Float32Array(0), seed = new Float32Array(0), layer = new Uint8Array(0);
 
     const resize = async () => {
-      const r = canvas.getBoundingClientRect();
-      w = Math.max(1, r.width);
-      h = Math.max(1, r.height);
+      // its own layout size (not the on-screen box, which shrinks when a parent is scaled)
+      w = Math.max(1, canvas.clientWidth);
+      h = Math.max(1, canvas.clientHeight);
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       canvas.width = Math.round(w * dpr);
       canvas.height = Math.round(h * dpr);
@@ -56,16 +56,23 @@ export function DotField({ place, label, strength = 1, burst = false, origin = [
     let mx = -1e4, my = -1e4;
     const onMove = (e: PointerEvent) => {
       const r = canvas.getBoundingClientRect();
-      mx = e.clientX - r.left;
-      my = e.clientY - r.top;
+      mx = ((e.clientX - r.left) / Math.max(1, r.width)) * w;
+      my = ((e.clientY - r.top) / Math.max(1, r.height)) * h;
     };
     window.addEventListener("pointermove", onMove);
+    let seen = true;
+    const io = new IntersectionObserver(([e]) => (seen = e.isIntersecting));
+    io.observe(canvas);
 
     let last = performance.now(), sc = 0;
     const sparks: number[] = [];
     const frame = (now: number) => {
       const dt = Math.min((now - last) / 1000, 0.05), t = now / 1000;
       last = now;
+      if (!seen) {
+        raf = requestAnimationFrame(frame); // off screen: draw nothing
+        return;
+      }
       ctx.clearRect(0, 0, w, h);
       const B = burstRef.current;
       sc += ((B.on ? 1 : 0) - sc) * Math.min(1, dt * (B.on ? 1.7 : 2.6));
@@ -112,8 +119,8 @@ export function DotField({ place, label, strength = 1, burst = false, origin = [
               sparks.push(x, y, rr);
             }
           }
-          ctx.moveTo(x + rr, y);
-          ctx.arc(x, y, rr, 0, Math.PI * 2);
+          // ponytail: squares, not arcs; at 1–2 px nobody sees the difference and it's ~5× cheaper
+          ctx.rect(x - rr, y - rr, rr * 2, rr * 2);
         }
         ctx.fill();
       }
@@ -138,6 +145,7 @@ export function DotField({ place, label, strength = 1, burst = false, origin = [
       alive = false;
       cancelAnimationFrame(raf);
       ro.disconnect();
+      io.disconnect();
       window.removeEventListener("pointermove", onMove);
     };
   }, [strength]);
@@ -210,7 +218,8 @@ export function stipplePhoto(src: string, opts: { crop: { x: number; y: number; 
       prob[i] = Math.min(1, Math.pow(Math.min(1, opts.tone * dark + opts.detail * detail), opts.gamma)) * near;
     }
     const out: number[] = [];
-    const target = w * h * opts.density;
+    // ponytail: capped, so a big canvas doesn't mean 100k+ dots a frame; raise with care
+    const target = Math.min(w * h * opts.density, 24000);
     for (let tries = 0; out.length / 2 < target && tries < target * 40; tries++) {
       const fx = Math.random() * cols, fy = Math.random() * rows;
       if (Math.random() < prob[Math.floor(fy) * cols + Math.floor(fx)]) out.push((fx / cols) * w, (fy / rows) * h);

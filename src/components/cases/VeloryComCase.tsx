@@ -42,11 +42,22 @@ export function VeloryComCase({ copy, hero = false }: { copy: CaseCopy; hero?: b
     const site = q("[data-site]")[0] as HTMLElement;
     // the new site's recording (its file follows the window's shape, see the effect below)
     const film = q("[data-new]")[0] as HTMLVideoElement;
+    const clip = q("[data-clip]")[0] as HTMLElement;
+    const bar = q("[data-line]")[0] as HTMLElement;
+    const which = q("[data-which]")[0] as HTMLElement;
     const line = { s: 100 };
+    /* only transforms move: the window onto the new site slides right by s%, the new site
+       inside it slides back by the same, and the line rides on the edge. Nothing is clipped or
+       repainted while you move, the layers just shift (the site is 560 wide in the world) */
     const draw = () => {
-      site.style.setProperty("--split", `${line.s}%`);
+      clip.style.transform = `translate3d(${line.s}%,0,0)`;
+      film.style.transform = `translate3d(${-line.s}%,0,0)`;
+      bar.style.transform = `translate3d(${line.s * 5.6}px,0,0)`;
+      // the switch in the browser bar lights the site you mostly see
+      const side = line.s >= 50 ? "before" : "after";
+      if (which.dataset.on !== side) which.dataset.on = side;
     };
-    const glide = gsap.quickTo(line, "s", { duration: 0.18, ease: "power3.out", onUpdate: draw });
+    const glide = gsap.quickTo(line, "s", { duration: 0.07, ease: "power2.out", onUpdate: draw });
     let sweep: gsap.core.Tween | null = null;
     let drift: gsap.core.Timeline | null = null;
     const still = () => {
@@ -99,6 +110,7 @@ export function VeloryComCase({ copy, hero = false }: { copy: CaseCopy; hero?: b
     k.cam(300, 0, 1, 2.1, 1.0);
     k.hide("[data-newtab]", 2.3, 0.25);
     k.show("[data-site]", 2.5, { duration: 0.6 });
+    k.show("[data-which]", 2.9, { duration: 0.4 });
     tl.call(() => void film.play().catch(() => {}), undefined, 2.4);
 
     // 3. the line sweeps in from the right to the arrow, then follows it
@@ -211,6 +223,11 @@ export function VeloryComCase({ copy, hero = false }: { copy: CaseCopy; hero?: b
               </svg>
               <span data-addr="" className="f-hidden">velory.com</span>
             </span>
+            {/* which site you're looking at: the old one left of the line, the new one right */}
+            <span data-which="" data-on="before" className="f-which f-hidden" aria-hidden="true">
+              <span data-side="before">Before</span>
+              <span data-side="after">After</span>
+            </span>
             <span className="block h-[20px] w-[20px] rounded-full bg-[var(--f-accent-wash)]" />
             {/* the page loading */}
           </div>
@@ -240,21 +257,14 @@ export function VeloryComCase({ copy, hero = false }: { copy: CaseCopy; hero?: b
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img data-old="" src={`${ASSETS}-old-${FIRST}.webp`} alt="The old velory.com" className="f-split-img" draggable={false} />
             {/* the new site plays, its hero film running, like the real page */}
-            <video data-new="" className="f-split-img f-split-new" src={`${ASSETS}-new-${FIRST}.mp4`} poster={`${ASSETS}-new-${FIRST}.webp`} muted loop playsInline preload="metadata" aria-label="The new velory.com" />
-            <span className="f-split-line" aria-hidden="true">
+            <div data-clip="" className="f-split-clip">
+              <video data-new="" className="f-split-img f-split-new" src={`${ASSETS}-new-${FIRST}.mp4`} poster={`${ASSETS}-new-${FIRST}.webp`} muted loop playsInline preload="metadata" aria-label="The new velory.com" />
+            </div>
+            <span data-line="" className="f-split-line" aria-hidden="true">
               <span className="f-split-knob">
-                <span className="f-split-side">
-                  <svg width="5" height="8" viewBox="0 0 5 8" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M3.9 1 1.1 4l2.8 3" />
-                  </svg>
-                  Before
-                </span>
-                <span className="f-split-side">
-                  After
-                  <svg width="5" height="8" viewBox="0 0 5 8" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M1.1 1 3.9 4 1.1 7" />
-                  </svg>
-                </span>
+                <svg width="12" height="8" viewBox="0 0 12 8" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3.5 1 .8 4l2.7 3M8.5 1 11.2 4 8.5 7" />
+                </svg>
               </span>
             </span>
           </div>

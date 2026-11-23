@@ -331,9 +331,9 @@ export function Bloom({
     let w = 1, h = 1;
     const hobbyScale: number[] = [];
     const resize = () => {
-      const r = canvas.getBoundingClientRect();
-      w = Math.max(1, r.width);
-      h = Math.max(1, r.height);
+      // its own layout size (not the on-screen box, which shrinks when a parent is scaled)
+      w = Math.max(1, canvas.clientWidth);
+      h = Math.max(1, canvas.clientHeight);
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       renderer.setPixelRatio(dpr);
       renderer.setSize(w, h, false);
@@ -352,8 +352,8 @@ export function Bloom({
     let mx = 0, my = 0, hovering = false, leanX = 0, leanY = 0;
     const onMove = (e: PointerEvent) => {
       const r = canvas.getBoundingClientRect();
-      mx = e.clientX - r.left - w / 2;
-      my = h / 2 - (e.clientY - r.top);
+      mx = ((e.clientX - r.left) / Math.max(1, r.width)) * w - w / 2;
+      my = h / 2 - ((e.clientY - r.top) / Math.max(1, r.height)) * h;
       hovering = true;
     };
     const onLeave = () => (hovering = false);

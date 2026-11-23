@@ -1,3 +1,6 @@
+import { CurvedText } from "@/components/CurvedText";
+import { ToolLogo } from "@/components/ToolLogos";
+
 /* The quieter rectangles for taller screens: a few words each, and at most one slow,
    small movement. */
 
@@ -6,7 +9,7 @@ export function AboutTile({ hello, lines, facts }: { hello: string; lines: strin
   return (
     <section className="tile tone-leaf">
       <div className="tile-grid">
-        <p className="tile-label t-label">About</p>
+        <p className="sr-only">About</p>
         <div className="tile-stage flex flex-col justify-center gap-3 pr-6">
           <p className="t-title m-0">{hello}</p>
           {lines.map((l) => (
@@ -15,7 +18,8 @@ export function AboutTile({ hello, lines, facts }: { hello: string; lines: strin
             </p>
           ))}
         </div>
-        <p className="t-label">{facts.join(" · ")}</p>
+        <p className="sr-only">{facts.join(" · ")}</p>
+        <CurvedText title="About" text={facts.join(" · ")} />
       </div>
     </section>
   );
@@ -27,6 +31,7 @@ export function ToolboxTile({ tools }: { tools: string[] }) {
     <ul className="absolute inset-0 m-0 flex list-none flex-wrap content-center justify-center gap-2.5 p-0">
       {tools.map((t, i) => (
         <li key={t} className="tool-tag t-body" style={{ animationDelay: `${-i * 0.9}s`, animationDuration: `${3.6 + (i % 3) * 0.7}s` }}>
+          <ToolLogo name={t} />
           {t}
         </li>
       ))}
