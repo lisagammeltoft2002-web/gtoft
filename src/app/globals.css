@@ -239,13 +239,13 @@ body {
 /* velory.com before/after: the old site whole, the new one shown right of the line */
 .film .f-split { --split: 100%; touch-action: pan-y; }
 .film .f-split.is-live { cursor: ew-resize; }
-.film .f-split-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top; user-select: none; pointer-events: none; }
+.film .f-split-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; user-select: none; pointer-events: none; }
+.film .f-split[data-crop] .f-split-img { object-fit: cover; object-position: top; }
 .film .f-split-new { clip-path: inset(0 0 0 var(--split)); }
-.film .f-split-short, .film .f-split-wide, .film .f-split-tall { position: absolute; inset: 0; display: none; }
-.film .f-split:not([data-shape]) .f-split-wide, .film .f-split[data-shape="wide"] .f-split-wide, .film .f-split[data-shape="short"] .f-split-short, .film .f-split[data-shape="tall"] .f-split-tall { display: block; }
 .film .f-split-line { position: absolute; top: 0; bottom: 0; left: var(--split); width: 1.5px; margin-left: -0.75px; background: #fff; box-shadow: 0 0 0 0.5px rgb(20 40 90 / 0.12), 0 0 12px rgb(20 40 90 / 0.18); pointer-events: none; }
-.film .f-split-knob { position: absolute; top: 50%; left: 50%; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: #fff; color: var(--f-accent-deep); transform: translate(-50%, -50%); box-shadow: 0 0 0 0.5px rgb(20 40 90 / 0.1), 0 4px 12px -4px rgb(20 40 90 / 0.35); }
-.film .f-split-pill { position: absolute; top: 10px; padding: 3px 8px; border-radius: 999px; background: rgb(255 255 255 / 0.92); color: var(--f-accent-deep); font-family: var(--font-ui), system-ui, sans-serif; font-size: 9px; font-weight: 500; letter-spacing: 0.02em; box-shadow: 0 0 0 0.5px rgb(20 40 90 / 0.1), 0 2px 6px -2px rgb(20 40 90 / 0.25); pointer-events: none; }
+.film .f-split-knob { position: absolute; top: 50%; left: 50%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 108px; height: 22px; border-radius: 999px; background: #fff; color: var(--f-accent-deep); font-family: var(--font-ui), system-ui, sans-serif; font-size: 9px; font-weight: 500; letter-spacing: 0.02em; white-space: nowrap; transform: translate(-50%, -50%); box-shadow: 0 0 0 0.5px rgb(20 40 90 / 0.1), 0 4px 12px -4px rgb(20 40 90 / 0.35); }
+.film .f-split-side { display: flex; align-items: center; gap: 4px; padding: 0 8px; }
+.film .f-split-side:first-child { justify-content: flex-end; box-shadow: inset -0.5px 0 0 rgb(20 40 90 / 0.14); }
 @keyframes f-blink { 50% { opacity: 0; } }
 .f-spin { animation: f-spin 0.8s linear infinite; transform-origin: 50% 50%; }
 @keyframes f-spin { to { transform: rotate(360deg); } }
@@ -479,6 +479,12 @@ body {
 .lin-tile { transition: transform 0.17s cubic-bezier(0.3, 0, 0.2, 1), box-shadow 0.17s; }
 .lin-tile.is-lifting { transform: scale(1.025); box-shadow: 0 22px 44px -18px rgb(20 32 64 / 0.4); }
 .cell:has(.is-lifting) { overflow: visible; z-index: 5; }
+/* on the board the yellow arrow shows only while you point at (or tab into) its case; on touch
+   screens, which can't hover, it stays */
+@media (hover: hover) {
+  .lin-tile:not(.case-hero) .case-cta { opacity: 0; scale: 0.6; transition: transform 0.35s cubic-bezier(0.3, 1.4, 0.5, 1), box-shadow 0.35s, opacity 0.25s ease, scale 0.4s cubic-bezier(0.3, 1.4, 0.5, 1); }
+  .lin-tile:not(.case-hero):is(:hover, :focus-within, .is-lifting) .case-cta { opacity: 1; scale: 1; }
+}
 .lin-tile { border-radius: 18px; }
 
 /* the case page scrolls (the home board never does). Next keeps a page you leave in the
@@ -513,31 +519,13 @@ html:has(.case-page:not([style*="display"])) body { height: auto; overflow-x: hi
   background-size: 180px 180px;
   opacity: 0.55;
 }
-/* "All work" stays at hand however far you scroll; the case's kind sits top right of the hero */
-.case-top { position: fixed; z-index: 20; top: 0; left: 0; display: flex; align-items: center; height: 64px; padding: 0 var(--edge); }
-.case-kind { position: absolute; z-index: 3; top: 0; right: var(--edge); line-height: 64px; }
-.case-back {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s1);
-  height: 38px;
-  padding: 0 16px 0 12px;
-  border-radius: 999px;
-  background: #fff;
-  color: var(--ink-deep);
-  box-shadow: 0 0 0 1px rgb(20 32 64 / 0.08), 0 6px 16px -10px rgb(20 32 64 / 0.3);
-  font-family: var(--font-text), Georgia, serif;
-  font-size: 15px;
-  transition: transform 0.3s cubic-bezier(0.3, 1.4, 0.5, 1);
-}
-.case-back:hover { transform: translateX(-2px); }
-.case-kind { color: var(--ink-deep); opacity: 0.75; text-align: right; white-space: nowrap; }
 
-/* the hero is the tile, opened: edge to edge, the full window, the video in its white screen
-   and the words under it where they sit on the tile */
-.case-hero { width: 100%; height: 100svh; min-height: 480px; border-radius: 0; }
-.case-hero .film-stage { margin: 64px var(--edge) calc(14px * var(--ui)); }
-.case-hero .lin-words { padding: 0 calc(var(--edge) + 10px) calc(22px * var(--ui)); }
+/* the hero is the tile, opened: the video takes the whole screen inside a slim blue frame,
+   and the words wait under it, found by scrolling */
+.case-hero { width: 100%; height: auto; grid-template-rows: auto auto; border-radius: 0; }
+/* a slim blue frame around it, like the tile's */
+.case-hero .film-stage { height: calc(100svh - 20px); min-height: 420px; margin: 10px; border-radius: 14px; }
+.case-hero .lin-words { padding: var(--s4) var(--edge) var(--s3); }
 
 .case-body { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap); max-width: 1240px; margin: 0 auto; padding: 0 var(--gap); }
 .case-head { padding: var(--section) var(--s1) var(--s5); }
@@ -663,8 +651,7 @@ html:has(.case-page:not([style*="display"])) body { height: auto; overflow-x: hi
   .case-films { grid-template-columns: 1fr; }
   .case-journey { grid-template-columns: repeat(4, 72%); overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 4px; }
   .case-step { scroll-snap-align: start; }
-  .case-hero { height: auto; min-height: 0; }
-  .case-hero .film-stage { aspect-ratio: 600 / 340; }
+  .case-hero .film-stage { height: auto; min-height: 0; aspect-ratio: 600 / 340; margin: 8px; border-radius: 12px; }
 }
 
 /* the transitions (the moves themselves are in components/cases/boardMotion.ts).

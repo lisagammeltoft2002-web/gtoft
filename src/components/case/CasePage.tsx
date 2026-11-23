@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { ViewTransition } from "react";
 import { Arrow } from "@/components/cases/Film";
 import { Journey } from "./Journey";
-import { BackHome } from "./BackHome";
 import { HoverVideo } from "./HoverVideo";
 import { ThemePair } from "./ThemePair";
 import { VeloryComCase } from "@/components/cases/VeloryComCase";
@@ -34,11 +33,6 @@ export function CasePage({ slug }: { slug: string }) {
 
   return (
     <main className="case-page">
-      <nav className="case-top">
-        <BackHome slug={slug} />
-      </nav>
-      <span className="t-label case-kind">{c.kind}</span>
-
       <Hero copy={board.cases[slug]} hero />
 
       <ViewTransition enter="case-rise" default="none">

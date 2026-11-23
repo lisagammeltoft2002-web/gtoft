@@ -66,7 +66,7 @@ function rewind(tl: gsap.core.Timeline, fade: HTMLElement, reset: () => void) {
 
 /* ------------------------------------------------------------------ one film */
 
-/** auto: the film plays by itself and loops (the case page hero); otherwise it plays while pointed at.
+/** auto: the case page hero, which opens on the last frame (no replay); otherwise it plays while pointed at.
     stretch: the app window takes the stage's own shape (its height follows the stage), so at
     full view it fits exactly, like a real page in a browser, instead of being cropped at the
     sides; the window's world height is written to --win-h on the frame. */
@@ -115,8 +115,12 @@ export function useFilm(
         const s0 = Math.max(r.width / W, r.height / H);
         const bottom = stretch ? T + (R - L) * (r.height / r.width) : B;
         if (stretch) root.style.setProperty("--win-h", `${bottom - T}px`);
+        root.style.setProperty("--s0", String(s0));
         const fence = (c: { x: number; y: number; z: number }) => {
-          const z = Math.max(c.z, r.width / (s0 * (R - L)), r.height / (s0 * (bottom - T)));
+          // stretched, the window has the stage's shape: zoom 1 is the whole window, edge to edge
+          // (a stage narrower than the world would otherwise cut its sides)
+          const fit = Math.max(r.width / (s0 * (R - L)), r.height / (s0 * (bottom - T)));
+          const z = stretch ? Math.max(c.z * fit, fit) : Math.max(c.z, fit);
           const hw = r.width / (s0 * z) / 2, hh = r.height / (s0 * z) / 2;
           return { x: Math.min(Math.max(c.x, L + hw), R - hw), y: Math.min(Math.max(c.y, T + hh), bottom - hh), z };
         };
@@ -200,15 +204,11 @@ export function useFilm(
       }
 
       if (auto) {
-        // the hero: start once the page has settled, rest on the last frame, then go again
-        let wait = gsap.delayedCall(0.9, () => tl.play(0));
-        tl.eventCallback("onComplete", () => {
-          wait = gsap.delayedCall(2.4, () => {
-            fades = rewind(tl, stage, reset);
-            wait = gsap.delayedCall(0.5, () => tl.play(0));
-          });
-        });
-        void wait;
+        // the hero: you've just watched the film on the board, so the page opens on its last
+        // frame instead of playing it again (its callbacks still run, so anything live at the
+        // end, like a playing video, keeps going). The cursor has done its job: hidden.
+        tl.progress(1, false);
+        gsap.set(cur, { autoAlpha: 0 });
       }
 
       let fades: gsap.core.Tween[] = [];
