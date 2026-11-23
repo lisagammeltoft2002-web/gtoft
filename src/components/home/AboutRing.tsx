@@ -19,11 +19,11 @@ import { Glide, TUNE, driftPx } from "./rail/glide";
 const TILT_X = 54; // deg, lean back
 const TILT_Y = -14; // deg, and a little to the left
 const DEPTH = 1600; // perspective, px
-// square size, as a share of the ring's diameter: 66 % of the distance between neighbouring
-// centres (the chord 2·sin(π/n) of the radius). Squares need more room than circles did:
-// their inner corners swing towards each other, and this keeps a clear gap between them,
-// even where the perspective makes the front ones bigger
-const dotShare = (n: number) => 0.66 * Math.sin(Math.PI / n);
+// square size, as a share of the ring's diameter. The squares all face the same way, so
+// two neighbours come closest when they sit diagonally to each other: they'd touch at
+// 1/√2 ≈ 71 % of the distance between their centres (the chord, sin(π/n) of the diameter).
+// 65 % is as big as they get with a clear gap (about 9 % of a square) at that tightest moment
+const dotShare = (n: number) => 0.65 * Math.sin(Math.PI / n);
 const THICK = 4; // px: each circle is a thin solid disc this deep
 const BEND = [0.04, 0.1]; // at the ring's left and right ends circles stretch along their way: at rest, + while spinning
 const MARGIN = 0.05; // room left around the ring, as a share of the screen
@@ -37,12 +37,12 @@ const rad = (d: number) => (d * Math.PI) / 180;
    circles lie in the tilted ring, so this is the ring's outer edge, through the tilt and
    the perspective) */
 function sweptBox(ring: number, dot: number) {
-  const r = ring / 2 + ((ring * dot) / 2) * Math.SQRT2; // out to a square's corner
+  const r = ring / 2, h = (ring * dot) / 2; // the line, and half a square (squares stay straight, so their corners are always ±h, ±h)
   const [ax, ay] = [rad(TILT_X), rad(TILT_Y)];
   let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
-  for (let k = 0; k < 96; k++) {
-    const a = (k / 96) * Math.PI * 2;
-    let x = r * Math.cos(a), y = r * Math.sin(a), z = 0;
+  for (let k = 0; k < 96 * 4; k++) {
+    const a = (Math.floor(k / 4) / 96) * Math.PI * 2;
+    let x = r * Math.cos(a) + (k & 1 ? h : -h), y = r * Math.sin(a) + (k & 2 ? h : -h), z = 0;
     // rotateX then rotateY, as CSS applies them (the right one first)
     [x, z] = [x * Math.cos(ay) + z * Math.sin(ay), -x * Math.sin(ay) + z * Math.cos(ay)];
     [y, z] = [y * Math.cos(ax) - z * Math.sin(ax), y * Math.sin(ax) + z * Math.cos(ax)];

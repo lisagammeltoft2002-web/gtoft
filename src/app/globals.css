@@ -854,7 +854,11 @@ html:has(.home) body { height: auto; overflow-x: hidden; overflow-y: auto; overs
   top: calc(50% - var(--dot) / 2);
   width: var(--dot);
   height: var(--dot);
-  transform: rotate(calc(360deg / var(--n) * var(--i))) translateY(calc(var(--ring) / -2)) scaleX(calc(1 + var(--bend, 0)));
+  /* out to its place on the line, then turned back by the ring's turn and its place on it,
+     so every square stays straight (0°) while the ring turns */
+  transform:
+    rotate(calc(360deg / var(--n) * var(--i))) translateY(calc(var(--ring) / -2)) scaleX(calc(1 + var(--bend, 0)))
+    rotate(calc(-1deg * (var(--spin, 0) + 360 / var(--n) * var(--i))));
   transform-style: preserve-3d; /* so the edge discs sit behind the face, in depth */
 }
 /* the side of each circle: thin discs stacked behind the face, 1px apart, as clear glass
@@ -939,15 +943,9 @@ html:has(.home) body { height: auto; overflow-x: hidden; overflow-y: auto; overs
   color: var(--text);
   --leaf: #fff; /* drawings that cut shapes out of the old green (the moon) now cut out of white */
 }
-/* the circles lie in the turning ring; what's inside each one turns back by the ring's
-   turn (and the circle's place on it), so it always stays the right way up */
-.about-ring-dot .about-ring-content {
-  transform:
-    scale(var(--k-dot, 0.4))
-    translate(calc(var(--content, 600px) / 2), calc(var(--content, 600px) / 2))
-    rotate(calc(-1deg * (var(--spin, 0) + 360 / var(--n) * var(--i))))
-    translate(calc(var(--content, 600px) / -2), calc(var(--content, 600px) / -2));
-}
+/* in the ring, what's inside is shrunk to the square's size (the square itself already
+   stays straight, so its content does too) */
+.about-ring-dot .about-ring-content { transform: scale(var(--k-dot, 0.4)); }
 .about-ring-content .tile { background: transparent; color: var(--text); } /* the glass shows through */
 .about-ring-content .linen { background-image: none; }
 .about-ring-content .t-label,
